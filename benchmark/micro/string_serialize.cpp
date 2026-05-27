@@ -14,21 +14,22 @@ static Vector string_vector(LogicalType::VARCHAR, STANDARD_VECTOR_SIZE);
 static void InitStringVector() {
 	auto string_data = FlatVector::Writer<string_t>(string_vector, STANDARD_VECTOR_SIZE);
 	for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
-		string_data[i] = StringUtil::Repeat("X", i % 100);
 		if (i % 10 == 0) {
-			string_data.SetInvalid(i);
+			string_data.WriteNull();
+		} else {
+			string_data.WriteValue(StringUtil::Repeat("X", i % 100));
 		}
 	}
 }
 
-static void RunStringSerializationBenchmark(idx_t serialization_version) {
+static void RunStringSerializationBenchmark(idx_t storage_version) {
 	for (idx_t i = 0; i < 10000; i++) {
 		MemoryStream stream;
 		SerializationOptions options;
-		options.serialization_compatibility = SerializationCompatibility::FromIndex(serialization_version);
+		options.storage_compatibility = StorageCompatibility::FromIndex(static_cast<StorageVersion>(storage_version));
 		BinarySerializer serializer(stream, options);
 		serializer.Begin();
-		string_vector.Serialize(serializer, STANDARD_VECTOR_SIZE, true);
+		string_vector.Serialize(serializer, true);
 		serializer.End();
 
 		stream.SetPosition(0);

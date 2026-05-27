@@ -8,17 +8,17 @@
 namespace duckdb {
 
 static void CardinalityFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-	auto &map = args.data[0];
-	auto entries = map.Values<list_entry_t>(args.size());
+	const auto &map = args.data[0];
+	auto entries = map.Values<list_entry_t>();
 
 	auto result_data = FlatVector::Writer<uint64_t>(result, args.size());
 	for (idx_t row = 0; row < args.size(); row++) {
 		auto entry = entries[row];
 		if (!entry.IsValid()) {
-			result_data.SetInvalid(row);
+			result_data.WriteNull();
 			continue;
 		}
-		result_data[row] = entries.GetValueUnsafe(row).length;
+		result_data.WriteValue(entries.GetValueUnsafe(row).length);
 	}
 }
 
@@ -29,7 +29,7 @@ static unique_ptr<FunctionData> CardinalityBind(BindScalarFunctionInput &input) 
 		throw BinderException("Cardinality must have exactly one arguments");
 	}
 
-	if (arguments[0]->return_type.id() != LogicalTypeId::MAP) {
+	if (arguments[0]->GetReturnType().id() != LogicalTypeId::MAP) {
 		throw BinderException("Cardinality can only operate on MAPs");
 	}
 
@@ -39,7 +39,7 @@ static unique_ptr<FunctionData> CardinalityBind(BindScalarFunctionInput &input) 
 
 ScalarFunction CardinalityFun::GetFunction() {
 	ScalarFunction fun({LogicalType::ANY}, LogicalType::UBIGINT, CardinalityFunction, CardinalityBind);
-	fun.varargs = LogicalType::ANY;
+	fun.SetVarArgs(LogicalType::ANY);
 	fun.SetNullHandling(FunctionNullHandling::DEFAULT_NULL_HANDLING);
 	return fun;
 }

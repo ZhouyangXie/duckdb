@@ -24,9 +24,9 @@ JSONTransformOptions::JSONTransformOptions() : parameters(false, &error_message)
 }
 
 JSONTransformOptions::JSONTransformOptions(bool strict_cast_p, bool error_duplicate_key_p, bool error_missing_key_p,
-                                           bool error_unkown_key_p)
+                                           bool error_unknown_key_p)
     : strict_cast(strict_cast_p), error_duplicate_key(error_duplicate_key_p), error_missing_key(error_missing_key_p),
-      error_unknown_key(error_unkown_key_p), parameters(false, &error_message) {
+      error_unknown_key(error_unknown_key_p), parameters(false, &error_message) {
 }
 
 //! Forward declaration for recursion
@@ -78,7 +78,7 @@ static unique_ptr<FunctionData> JSONTransformBind(BindScalarFunctionInput &input
 	auto &context = input.GetClientContext();
 	auto &bound_function = input.GetBoundFunction();
 	auto &arguments = input.GetArguments();
-	D_ASSERT(bound_function.arguments.size() == 2);
+	D_ASSERT(bound_function.GetArguments().size() == 2);
 	if (arguments[1]->HasParameter()) {
 		throw ParameterNotResolvedException();
 	}
@@ -86,8 +86,8 @@ static unique_ptr<FunctionData> JSONTransformBind(BindScalarFunctionInput &input
 		throw BinderException("JSON structure must be a constant!");
 	}
 	auto structure_val = ExpressionExecutor::EvaluateScalar(context, *arguments[1]);
-	if (structure_val.IsNull() || arguments[1]->return_type == LogicalTypeId::SQLNULL) {
-		bound_function.return_type = LogicalTypeId::SQLNULL;
+	if (structure_val.IsNull() || arguments[1]->GetReturnType() == LogicalTypeId::SQLNULL) {
+		bound_function.SetReturnType(LogicalTypeId::SQLNULL);
 	} else {
 		if (!structure_val.DefaultTryCastAs(LogicalType::JSON())) {
 			throw BinderException("Cannot cast JSON structure to string");
@@ -95,9 +95,9 @@ static unique_ptr<FunctionData> JSONTransformBind(BindScalarFunctionInput &input
 		auto structure_string = structure_val.GetValueUnsafe<string_t>();
 		JSONAllocator json_allocator(Allocator::DefaultAllocator());
 		auto doc = JSONCommon::ReadDocument(structure_string, JSONCommon::READ_FLAG, json_allocator.GetYYAlc());
-		bound_function.return_type = StructureStringToType(doc->root, context);
+		bound_function.SetReturnType(StructureStringToType(doc->root, context));
 	}
-	return make_uniq<VariableReturnBindData>(bound_function.return_type);
+	return make_uniq<VariableReturnBindData>(bound_function.GetReturnType());
 }
 
 static inline string_t GetString(yyjson_val *val) {
@@ -302,8 +302,26 @@ static bool TransformFromString(yyjson_val *vals[], Vector &result, const idx_t 
 	return success;
 }
 
+static bool TryOneFormat(const StrpTimeFormat &fmt, LogicalTypeId type_id, const string_t &input, Vector &result,
+                         idx_t i, string &error_message) {
+	if (type_id == LogicalTypeId::DATE) {
+		date_t val;
+		if (!TryParseDate::Operation<date_t>(fmt, input, val, error_message)) {
+			return false;
+		}
+		FlatVector::GetDataMutable<date_t>(result)[i] = val;
+	} else {
+		timestamp_t val;
+		if (!TryParseTimeStamp::Operation<timestamp_t>(fmt, input, val, error_message)) {
+			return false;
+		}
+		FlatVector::GetDataMutable<timestamp_t>(result)[i] = val;
+	}
+	return true;
+}
+
 template <class OP, class T>
-static bool TransformStringWithFormat(Vector &string_vector, const StrpTimeFormat &format, const idx_t count,
+static bool TransformStringWithFormat(const Vector &string_vector, const StrpTimeFormat &format, const idx_t count,
                                       Vector &result, JSONTransformOptions &options) {
 	const auto source_strings = FlatVector::GetData<string_t>(string_vector);
 	const auto &source_validity = FlatVector::Validity(string_vector);
@@ -334,22 +352,47 @@ static bool TransformFromStringWithFormat(yyjson_val *vals[], Vector &result, co
 		success = false;
 	}
 
-	const auto &result_type = result.GetType().id();
-	auto &format = options.date_format_map->GetFormat(result_type);
+	const auto result_type_id = result.GetType().id();
+	D_ASSERT(result_type_id == LogicalTypeId::DATE || result_type_id == LogicalTypeId::TIMESTAMP);
+	const auto &formats = options.date_format_map->GetFormats(result_type_id);
+	const auto source_strings = FlatVector::GetData<string_t>(string_vector);
+	const auto &source_validity = FlatVector::Validity(string_vector);
+	auto &target_validity = FlatVector::ValidityMutable(result);
 
-	switch (result_type) {
-	case LogicalTypeId::DATE:
-		if (!TransformStringWithFormat<TryParseDate, date_t>(string_vector, format, count, result, options)) {
-			success = false;
+	// Probe first non-null value to find the most-specific matching format for this vector
+	idx_t matched_idx = DConstants::INVALID_INDEX;
+	for (idx_t i = 0; i < count && matched_idx == DConstants::INVALID_INDEX; i++) {
+		if (!source_validity.RowIsValid(i)) {
+			continue;
 		}
-		break;
-	case LogicalTypeId::TIMESTAMP:
-		if (!TransformStringWithFormat<TryParseTimeStamp, timestamp_t>(string_vector, format, count, result, options)) {
-			success = false;
+		string error_message;
+		for (idx_t j = formats.size(); j > 0; j--) {
+			if (TryOneFormat(formats[j - 1], result_type_id, source_strings[i], result, i, error_message)) {
+				matched_idx = j - 1;
+				break;
+			}
 		}
-		break;
-	default:
-		throw InternalException("No date/timestamp formats for %s", EnumUtil::ToString(result.GetType().id()));
+	}
+
+	const idx_t parse_limit = (matched_idx != DConstants::INVALID_INDEX) ? matched_idx + 1 : formats.size();
+	for (idx_t i = 0; i < count; i++) {
+		if (!source_validity.RowIsValid(i)) {
+			target_validity.SetInvalid(i);
+			continue;
+		}
+		bool parsed = false;
+		string error_message;
+		// Reverse iter formats, beginning at matched_idx until one parses
+		for (idx_t j = parse_limit; j > 0 && !parsed; j--) {
+			parsed = TryOneFormat(formats[j - 1], result_type_id, source_strings[i], result, i, error_message);
+		}
+		if (!parsed) {
+			target_validity.SetInvalid(i);
+			if (success && options.strict_cast) {
+				options.object_index = i;
+				success = false;
+			}
+		}
 	}
 	return success;
 }
@@ -521,7 +564,7 @@ static bool TransformObjectInternal(yyjson_val *objects[], yyjson_alc *alc, Vect
 
 	for (idx_t child_i = 0; child_i < child_vs.size(); child_i++) {
 		if (projected_indices.find(child_i) == projected_indices.end()) {
-			ConstantVector::SetNull(child_vs[child_i]);
+			ConstantVector::SetNull(child_vs[child_i], count_t(count));
 		}
 	}
 
@@ -598,7 +641,7 @@ static bool TransformArrayToList(yyjson_val *arrays[], yyjson_alc *alc, Vector &
 	}
 
 	// Transform array values
-	if (!JSONTransform::Transform(nested_vals, alc, ListVector::GetEntry(result), offset, options, nullptr)) {
+	if (!JSONTransform::Transform(nested_vals, alc, ListVector::GetChildMutable(result), offset, options, nullptr)) {
 		success = false;
 	}
 
@@ -688,7 +731,8 @@ static bool TransformArrayToArray(yyjson_val *arrays[], yyjson_alc *alc, Vector 
 	}
 
 	// Transform array values
-	if (!JSONTransform::Transform(nested_vals, alc, ArrayVector::GetEntry(result), child_count, options, nullptr)) {
+	if (!JSONTransform::Transform(nested_vals, alc, ArrayVector::GetChildMutable(result), child_count, options,
+	                              nullptr)) {
 		success = false;
 	}
 
@@ -927,6 +971,7 @@ bool JSONTransform::Transform(yyjson_val *vals[], yyjson_alc *alc, Vector &resul
 	case LogicalTypeId::TIME_TZ:
 	case LogicalTypeId::TIMESTAMP:
 	case LogicalTypeId::TIMESTAMP_TZ:
+	case LogicalTypeId::TIMESTAMP_TZ_NS:
 	case LogicalTypeId::TIMESTAMP_NS:
 	case LogicalTypeId::TIMESTAMP_MS:
 	case LogicalTypeId::TIMESTAMP_SEC:
@@ -951,10 +996,10 @@ bool JSONTransform::Transform(yyjson_val *vals[], yyjson_alc *alc, Vector &resul
 	}
 }
 
-static bool TransformFunctionInternal(Vector &input, const idx_t count, Vector &result, yyjson_alc *alc,
+static bool TransformFunctionInternal(const Vector &input, const idx_t count, Vector &result, yyjson_alc *alc,
                                       JSONTransformOptions &options) {
 	UnifiedVectorFormat input_data;
-	input.ToUnifiedFormat(count, input_data);
+	input.ToUnifiedFormat(input_data);
 	auto inputs = UnifiedVectorFormat::GetData<string_t>(input_data);
 
 	// Read documents
@@ -998,7 +1043,7 @@ ScalarFunctionSet JSONFunctions::GetTransformFunction() {
 	GetTransformFunctionInternal(set, LogicalType::VARCHAR);
 	GetTransformFunctionInternal(set, LogicalType::JSON());
 	for (auto &func : set.functions) {
-		func.errors = FunctionErrors::CAN_THROW_RUNTIME_ERROR;
+		func.SetFallible();
 	}
 	return set;
 }
@@ -1013,7 +1058,7 @@ ScalarFunctionSet JSONFunctions::GetTransformStrictFunction() {
 	GetTransformStrictFunctionInternal(set, LogicalType::VARCHAR);
 	GetTransformStrictFunctionInternal(set, LogicalType::JSON());
 	for (auto &func : set.functions) {
-		func.errors = FunctionErrors::CAN_THROW_RUNTIME_ERROR;
+		func.SetFallible();
 	}
 	return set;
 }

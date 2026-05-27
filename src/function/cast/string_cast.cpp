@@ -4,7 +4,6 @@
 #include "duckdb/common/vector/list_vector.hpp"
 #include "duckdb/common/vector/map_vector.hpp"
 #include "duckdb/common/vector/struct_vector.hpp"
-#include "duckdb/common/vector/string_vector.hpp"
 #include "duckdb/function/cast/default_casts.hpp"
 #include "duckdb/function/cast/vector_cast_helpers.hpp"
 #include "duckdb/common/exception/conversion_exception.hpp"
@@ -17,7 +16,7 @@
 namespace duckdb {
 
 template <class T>
-static bool StringEnumCastLoop(const VectorIterator<string_t> &source_data, VectorWriter<T> &result_data,
+static bool StringEnumCastLoop(const VectorIterator<string_t> &source_data, VectorScatterWriter<T> &result_data,
                                const LogicalType &result_type, idx_t count, VectorTryCastData &vector_cast_data) {
 	for (idx_t i = 0; i < count; i++) {
 		auto source_entry = source_data[i];
@@ -42,8 +41,8 @@ static bool StringEnumCast(Vector &source, Vector &result, idx_t count, CastPara
 	auto result_vector_type =
 	    source.GetVectorType() == VectorType::CONSTANT_VECTOR ? VectorType::CONSTANT_VECTOR : VectorType::FLAT_VECTOR;
 
-	auto source_data = source.Values<string_t>(count);
-	auto result_data = FlatVector::Writer<T>(result, count);
+	auto source_data = source.Values<string_t>();
+	auto result_data = FlatVector::ScatterWriter<T>(result);
 
 	VectorTryCastData vector_cast_data(result, parameters);
 	auto cast_result = StringEnumCastLoop(source_data, result_data, result.GetType(), count, vector_cast_data);
@@ -123,7 +122,6 @@ bool VectorStringToList::StringToNestedTypeCastLoop(const string_t *source_data,
 	Vector varchar_vector(LogicalType::VARCHAR, total_list_size);
 
 	ListVector::Reserve(result, total_list_size);
-	ListVector::SetListSize(result, total_list_size);
 
 	auto list_data = FlatVector::GetDataMutable<list_entry_t>(result);
 	auto child_data = FlatVector::GetDataMutable<string_t>(varchar_vector);
@@ -150,15 +148,17 @@ bool VectorStringToList::StringToNestedTypeCastLoop(const string_t *source_data,
 	}
 	D_ASSERT(total_list_size == total);
 
-	auto &result_child = ListVector::GetEntry(result);
+	auto &result_child = ListVector::GetChildMutable(result);
 	auto &cast_data = parameters.cast_data->Cast<ListBoundCastData>();
 	CastParameters child_parameters(parameters, cast_data.child_cast_info.GetCastData(), parameters.local_state);
 	bool all_converted =
 	    cast_data.child_cast_info.Cast(varchar_vector, result_child, total_list_size, child_parameters) &&
 	    vector_cast_data.all_converted;
+	// set the list size after the child cast, since the cast may have replaced the child buffer
+	ListVector::SetListSize(result, total_list_size);
 	if (!all_converted && parameters.nullify_parent) {
-		auto result_child_validity = result_child.Validity(total_list_size);
-		auto varchar_vector_validity = varchar_vector.Validity(total_list_size);
+		auto result_child_validity = result_child.Validity();
+		auto varchar_vector_validity = varchar_vector.Validity();
 		// Something went wrong in the conversion, we need to nullify the parent
 		for (idx_t i = 0; i < count; i++) {
 			for (idx_t j = list_data[i].offset; j < list_data[i].offset + list_data[i].length; j++) {
@@ -278,7 +278,6 @@ bool VectorStringToMap::StringToNestedTypeCastLoop(const string_t *source_data, 
 	auto child_val_data = FlatVector::GetDataMutable<string_t>(varchar_val_vector);
 
 	ListVector::Reserve(result, total_elements);
-	ListVector::SetListSize(result, total_elements);
 	auto list_data = FlatVector::GetDataMutable<list_entry_t>(result);
 
 	VectorTryCastData vector_cast_data(result, parameters);
@@ -318,6 +317,8 @@ bool VectorStringToMap::StringToNestedTypeCastLoop(const string_t *source_data, 
 	if (!cast_data.value_cast.Cast(varchar_val_vector, result_val_child, total_elements, val_params)) {
 		vector_cast_data.all_converted = false;
 	}
+	// set the list size after the child casts, since the casts may have replaced the child buffers
+	ListVector::SetListSize(result, total_elements);
 
 	if (!vector_cast_data.all_converted) {
 		auto &key_validity = FlatVector::ValidityMutable(result_key_child);
@@ -404,7 +405,7 @@ bool VectorStringToArray::StringToNestedTypeCastLoop(const string_t *source_data
 	}
 	D_ASSERT(total == child_count);
 
-	auto &result_child = ArrayVector::GetEntry(result);
+	auto &result_child = ArrayVector::GetChildMutable(result);
 	auto &cast_data = parameters.cast_data->Cast<ArrayBoundCastData>();
 	CastParameters child_parameters(parameters, cast_data.child_cast_info.GetCastData(), parameters.local_state);
 	bool cast_result = cast_data.child_cast_info.Cast(varchar_vector, result_child, child_count, child_parameters);
@@ -428,7 +429,7 @@ static bool StringToNestedTypeCast(Vector &source, Vector &result, idx_t count, 
 	default: {
 		UnifiedVectorFormat unified_source;
 
-		source.ToUnifiedFormat(count, unified_source);
+		source.ToUnifiedFormat(unified_source);
 		auto source_sel = unified_source.sel;
 		auto source_data = UnifiedVectorFormat::GetData<string_t>(unified_source);
 		auto &source_mask = unified_source.validity;
@@ -456,15 +457,15 @@ BoundCastInfo DefaultCasts::StringCastSwitch(BindCastInput &input, const Logical
 	case LogicalTypeId::TIMESTAMP_TZ:
 		return BoundCastInfo(
 		    &VectorCastHelpers::TryCastErrorLoop<string_t, timestamp_tz_t, duckdb::TryCastErrorMessage>);
+	case LogicalTypeId::TIMESTAMP_TZ_NS:
+		return BoundCastInfo(
+		    &VectorCastHelpers::TryCastErrorLoop<string_t, timestamp_tz_ns_t, duckdb::TryCastErrorMessage>);
 	case LogicalTypeId::TIMESTAMP_NS:
-		return BoundCastInfo(
-		    &VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_ns_t, duckdb::TryCastToTimestampNS>);
+		return BoundCastInfo(&VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_ns_t, duckdb::TryCast>);
 	case LogicalTypeId::TIMESTAMP_SEC:
-		return BoundCastInfo(
-		    &VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_t, duckdb::TryCastToTimestampSec>);
+		return BoundCastInfo(&VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_sec_t, duckdb::TryCast>);
 	case LogicalTypeId::TIMESTAMP_MS:
-		return BoundCastInfo(
-		    &VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_t, duckdb::TryCastToTimestampMS>);
+		return BoundCastInfo(&VectorCastHelpers::TryCastStrictLoop<string_t, timestamp_ms_t, duckdb::TryCast>);
 	case LogicalTypeId::BLOB:
 		return BoundCastInfo(&VectorCastHelpers::TryCastStringLoop<string_t, string_t, duckdb::TryCastToBlob>);
 	case LogicalTypeId::BIT:

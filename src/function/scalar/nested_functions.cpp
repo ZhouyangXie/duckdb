@@ -5,26 +5,27 @@
 
 namespace duckdb {
 
-void MapUtil::ReinterpretMap(Vector &result, Vector &input, idx_t count) {
-	input.Flatten(count);
+void MapUtil::ReinterpretMap(Vector &result, const Vector &input) {
+	input.Flatten();
+	const auto count = input.size();
 
-	auto &input_keys = MapVector::GetKeys(input);
-	auto &input_values = MapVector::GetValues(input);
+	const auto &input_keys = MapVector::GetKeys(input);
+	const auto &input_values = MapVector::GetValues(input);
 
 	// Copy the list offsets and top-level validity
 	auto result_data = FlatVector::Writer<list_entry_t>(result, count);
-	for (auto entry : input.Values<list_entry_t>(count)) {
+	for (auto entry : input.Values<list_entry_t>()) {
 		if (!entry.IsValid()) {
-			result_data.SetInvalid(entry.GetIndex());
+			result_data.WriteNull();
 			continue;
 		}
-		result_data[entry.GetIndex()] = entry.GetValue();
+		result_data.WriteValue(entry.GetValue());
 	}
 	ListVector::SetListSize(result, ListVector::GetListSize(input));
 
 	// Copy the struct validity
-	auto &result_struct = ListVector::GetEntry(result);
-	FlatVector::SetValidity(result_struct, FlatVector::ValidityMutable(ListVector::GetEntry(input)));
+	auto &result_struct = ListVector::GetChildMutable(result);
+	FlatVector::SetValidity(result_struct, FlatVector::Validity(ListVector::GetChild(input)));
 
 	// reference the keys / values
 	auto &result_keys = MapVector::GetKeys(result);

@@ -87,17 +87,45 @@ bool CTEInlining::EndsInAggregateOrDistinct(const LogicalOperator &op) {
 	return false;
 }
 
-static bool HasSideEffects(const LogicalOperator &op) {
-	switch (op.type) {
-	case LogicalOperatorType::LOGICAL_INSERT:
-	case LogicalOperatorType::LOGICAL_UPDATE:
-	case LogicalOperatorType::LOGICAL_DELETE:
+static bool EndsInDummyScan(const LogicalOperator &op) {
+	if (op.type == LogicalOperatorType::LOGICAL_DUMMY_SCAN || op.type == LogicalOperatorType::LOGICAL_EMPTY_RESULT ||
+	    op.type == LogicalOperatorType::LOGICAL_CTE_REF) {
 		return true;
-	default:
-		break;
+	}
+	if (op.children.size() != 1) {
+		return false;
 	}
 	for (auto &child : op.children) {
-		if (HasSideEffects(*child)) {
+		if (EndsInDummyScan(*child)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool ContainsDelimGet(const LogicalOperator &op) {
+	if (op.type == LogicalOperatorType::LOGICAL_DELIM_GET) {
+		return true;
+	}
+	for (auto &child : op.children) {
+		if (ContainsDelimGet(*child)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool HasCTEReferenceBelowDelimJoin(const LogicalOperator &op, TableIndex cte_index,
+                                          bool below_delim_join = false) {
+	if (op.type == LogicalOperatorType::LOGICAL_CTE_REF) {
+		auto &cteref = op.Cast<LogicalCTERef>();
+		if (cteref.cte_index == cte_index) {
+			return below_delim_join;
+		}
+	}
+	auto child_below_delim_join = below_delim_join || op.type == LogicalOperatorType::LOGICAL_DELIM_JOIN;
+	for (auto &child : op.children) {
+		if (HasCTEReferenceBelowDelimJoin(*child, cte_index, child_below_delim_join)) {
 			return true;
 		}
 	}
@@ -121,12 +149,26 @@ void CTEInlining::TryInlining(unique_ptr<LogicalOperator> &op) {
 		auto &cte = op->Cast<LogicalMaterializedCTE>();
 		auto ref_count = CountCTEReferences(*op, cte.table_index);
 		if (ref_count == 0) {
-			if (HasSideEffects(*cte.children[0])) {
+			if (cte.children[0]->HasSideEffects()) {
 				// DML CTEs must always execute for side effects even when unreferenced
 				return;
 			}
 			// this CTE is not referenced, we can remove it
 			op = std::move(op->children[1]);
+			return;
+		}
+		if (cte.children[0]->HasSideEffects()) {
+			// Never inline a DML CTE: inlining removes the LOGICAL_MATERIALIZED_CTE
+			// node that guarantees the DML executes exactly once and before the query
+			// side reads the modified table.  With ref_count==1, inlining would merge
+			// the DML into the query pipeline so it no longer precedes the scan.
+			// With ref_count>1 and requires_copy, the DML would execute once per copy.
+			return;
+		}
+		if (ContainsDelimGet(*cte.children[0]) && HasCTEReferenceBelowDelimJoin(*op->children[1], cte.table_index)) {
+			// Inlining a CTE that already contains a DELIM_GET stays safe while all matching CTE scans remain outside
+			// DELIM_JOIN subtrees, but once a scan is nested below another DELIM_JOIN the inlined DELIM_GETs can attach
+			// to the wrong duplicate-elimination source.
 			return;
 		}
 		if (cte.materialize == CTEMaterialize::CTE_MATERIALIZE_ALWAYS) {
@@ -166,10 +208,14 @@ void CTEInlining::TryInlining(unique_ptr<LogicalOperator> &op) {
 				return;
 			}
 
+			bool is_cheap_to_inline = op->children[0]->type == LogicalOperatorType::LOGICAL_EMPTY_RESULT ||
+			                          op->children[0]->type == LogicalOperatorType::LOGICAL_CTE_REF ||
+			                          EndsInDummyScan(*op->children[0]);
+
 			// Check how many base table references the CTE has
 			auto base_table_references = CountBaseTableReferences(*op->children[0]);
 
-			if (base_table_references > 2 && base_table_references * ref_count > 10) {
+			if (!is_cheap_to_inline && base_table_references > 2 && base_table_references * ref_count > 10) {
 				return;
 			}
 
@@ -178,7 +224,7 @@ void CTEInlining::TryInlining(unique_ptr<LogicalOperator> &op) {
 			// even if only a part of the CTE result is needed.
 			// Therefore, we check if the CTE Scans are below the LIMIT or TOP_N operator
 			// and if so, we try to inline the CTE definition.
-			if (ContainsLimit(*op->children[1]) || op->children[0]->type == LogicalOperatorType::LOGICAL_EMPTY_RESULT) {
+			if (is_cheap_to_inline || ContainsLimit(*op->children[1])) {
 				// this CTE is referenced multiple times and has a limit, we want to inline it
 				bool success = Inline(op->children[1], *op, true);
 				if (success) {
@@ -253,7 +299,7 @@ void PreventInlining::VisitExpression(unique_ptr<Expression> *expression) {
 	if (expr->GetExpressionClass() == ExpressionClass::BOUND_FUNCTION) {
 		auto &bound_function = expr->Cast<BoundFunctionExpression>();
 		// if we encounter the ErrorFun function, we still want to inline
-		if (bound_function.function == ErrorFun::GetFunction()) {
+		if (bound_function.function.GetName() == "error") {
 			return;
 		}
 
