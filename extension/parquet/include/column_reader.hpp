@@ -102,6 +102,7 @@ class ColumnReader {
 	friend class DeltaLengthByteArrayDecoder;
 	friend class DictionaryDecoder;
 	friend class RLEDecoder;
+	friend class ParquetReader;
 
 public:
 	ColumnReader(const ParquetReader &reader, const ParquetColumnSchema &schema_p);
@@ -260,12 +261,12 @@ private:
 		if (!HAS_DEFINES && !CHECKED && CONVERSION::PlainConstantSize() == sizeof(VALUE_TYPE)) {
 			// we can memcpy
 			idx_t copy_count = num_values * CONVERSION::PlainConstantSize();
-			memcpy(result_ptr + result_offset, plain_data.ptr, copy_count);
+			memcpy(result_ptr + result_offset + result_write_offset, plain_data.ptr, copy_count);
 			plain_data.unsafe_inc(copy_count);
 			return;
 		}
 		auto &result_mask = FlatVector::ValidityMutable(result);
-		for (idx_t row_idx = result_offset; row_idx < result_offset + num_values; row_idx++) {
+		for (idx_t row_idx = result_offset + result_write_offset; row_idx < result_offset + num_values; row_idx++) {
 			if (HAS_DEFINES && defines[row_idx] != MaxDefine()) {
 				result_mask.SetInvalid(row_idx);
 				continue;
@@ -308,9 +309,9 @@ private:
 			                                                             next_entry - current_entry, current_entry);
 			// read this row
 			if (HAS_DEFINES && defines[next_entry] != MaxDefine()) {
-				result_mask.SetInvalid(next_entry);
+				result_mask.SetInvalid(next_entry + result_write_offset);
 			} else {
-				result_ptr[next_entry] = CONVERSION::template PlainRead<CHECKED>(plain_data, *this);
+				result_ptr[next_entry + result_write_offset] = CONVERSION::template PlainRead<CHECKED>(plain_data, *this);
 			}
 			current_entry = next_entry + 1;
 		}
@@ -382,6 +383,9 @@ private:
 
 	//! Resizeable buffers used for the various encodings above
 	ResizeableBuffer encoding_buffers[2];
+
+protected:
+	idx_t result_write_offset = 0;
 
 public:
 	template <class TARGET>

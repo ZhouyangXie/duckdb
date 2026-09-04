@@ -65,6 +65,7 @@
 #include "duckdb/planner/expression/bound_conjunction_expression.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
+#include "zoned_selection_vector.hpp"
 
 namespace duckdb {
 
@@ -1070,6 +1071,10 @@ ParquetReader::ParquetReader(ClientContext &context_p, OpenFileInfo file_p, Parq
 		}
 	}
 	InitializeSchema(context_p);
+
+	Value enable_zoning = false;
+	context_p.TryGetCurrentSetting("enable_parquet_zoning", enable_zoning);
+	parquet_options.enable_zoning = enable_zoning.GetValue<bool>();
 }
 
 bool ParquetReader::MetadataCacheEnabled(ClientContext &context) {
@@ -1381,6 +1386,35 @@ void ParquetReader::PrepareRowGroupBuffer(ParquetReaderScanState &state, idx_t i
 				state.offset_in_group = group.num_rows;
 				return;
 			}
+
+			// zone-based data skipping
+			// not skipping the whole row group, but initialize the zone manager
+			auto & column_metadata = group.columns[schema_column_index].meta_data;
+			// TODO: add a user-level switch
+			bool zone_skipping_possible = !is_expression && is_column && column_metadata.__isset.zoning_statistics && parquet_options.enable_zoning;
+			if (zone_skipping_possible){
+				auto zone_state = ZoneStatisticsToState(
+					column_metadata.zoning_statistics,
+					column_reader.Type()
+				);
+				auto &expr_filter = ExpressionFilter::GetExpressionFilter(filter, "ParquetReader::PrepareRowGroupBuffer");
+				EvaluateExpressionFilterOnZoneMaps(expr_filter, *zone_state);
+				if(zone_state->IsSelInitialized()){
+					auto zones = GetZonesFromZoneEnds(
+						(idx_t *)column_metadata.zoning_statistics.zone_offset.data(),
+						*zone_state->zone_sel,
+						zone_state->zone_sel_size
+					);
+					if(state.row_group_zone_iterator == nullptr){
+						state.row_group_zone_iterator = make_uniq<ZoneIterator>(NumRows());
+					}
+					state.row_group_zone_iterator->zones = FindIntersectedZones(state.row_group_zone_iterator->zones, zones);
+					if(state.row_group_zone_iterator->zones.size() == 0){
+						state.offset_in_group = group.num_rows;
+						return;
+					}
+				}
+			}
 		}
 	}
 
@@ -1639,6 +1673,139 @@ void ParquetReader::ColumnWisePrefetch(ParquetReaderScanState &state, ThriftFile
 	}
 }
 
+AsyncResult ParquetReader::ScanByZones(ClientContext &context, ParquetReaderScanState &state, DataChunk &result){
+	auto scan_count = MinValue<idx_t>(STANDARD_VECTOR_SIZE, state.row_group_zone_iterator->GetRemaining());
+	result.SetCardinality(scan_count);
+
+	vector<Zone> scan_zones;
+	auto desired_count = scan_count;
+	while(desired_count > 0){
+		auto new_zone = state.row_group_zone_iterator->Next(desired_count);
+		D_ASSERT(!new_zone.IsEmpty());
+		scan_zones.emplace_back(new_zone);
+		desired_count -= scan_zones.back().Size();
+	}
+	D_ASSERT(desired_count == 0);
+
+	if (scan_count == 0) {
+		state.finished = true;
+		return SourceResultType::FINISHED;
+	}
+
+	state.define_buf.zero();
+	state.repeat_buf.zero();
+
+	auto define_ptr = (uint8_t *)state.define_buf.ptr;
+	auto repeat_ptr = (uint8_t *)state.repeat_buf.ptr;
+
+	D_ASSERT(filters);
+	idx_t filter_count = result.size();
+	vector<bool> need_to_read(column_ids.size(), true);
+
+	state.sel.Initialize(nullptr);
+	// TODO: initialize zoned_sel only when needed by a DirectSelect, else it's useless.
+	ZonedSelectionVector zoned_sel(std::move(scan_zones));
+	bool is_zoned_sel_up_to_date = true;
+
+	for (idx_t i = 0; i < state.scan_filters.size(); i++) {
+		if (filter_count == 0) {
+			break;
+		}
+		auto &scan_filter = state.scan_filters[i];
+		MultiFileLocalIndex local_idx(scan_filter.filter_idx);
+		D_ASSERT(need_to_read[local_idx.GetIndex()]);
+		auto &result_vector = result.data[local_idx.GetIndex()];
+		auto &child_reader = state.GetColumnReader(local_idx);
+
+		auto cur_offset = state.offset_in_group;
+		bool support_selective_scan = child_reader.SupportsDirectSelect();
+		if (support_selective_scan && !is_zoned_sel_up_to_date){
+			zoned_sel.UpdateBy(state.sel, filter_count);
+			is_zoned_sel_up_to_date = true;
+		}
+
+		// scan data by zones
+		idx_t scanned_count  = 0;
+		for (idx_t j = 0; j < zoned_sel.NumZones(); j++){
+			auto zone = zoned_sel.GetZone(j);
+			// skip the gap between zones
+			if(cur_offset < zone.begin){
+				child_reader.Skip(zone.begin - cur_offset);
+			}
+			ColumnReaderInput reader_input(zone.Size(), define_ptr, repeat_ptr);
+			child_reader.result_write_offset = scanned_count;
+			if (support_selective_scan){
+				// selectively load zones
+				child_reader.Select(reader_input, result_vector, *zoned_sel.GetSel(j), zoned_sel.GetSelSize(j));
+			} else {
+				child_reader.Read(reader_input, result_vector);
+			}
+			child_reader.result_write_offset = 0;
+			scanned_count += zone.Size();
+			cur_offset = zone.end;
+		}
+		child_reader.ApplyFilter(result_vector, scan_filter.filter, *scan_filter.filter_state, scan_count, state.sel, filter_count);
+		is_zoned_sel_up_to_date = false;
+
+		need_to_read[local_idx.GetIndex()] = false;
+		if (filter_count == 0) {
+			state.filter_eliminated_all_rows[i] = true;
+		}
+	}
+
+	for (idx_t i = 0; i < column_ids.size(); i++) {
+		MultiFileLocalIndex col_idx(i);
+		if (!need_to_read[col_idx]) {
+			continue;
+		}
+		if (filter_count == 0) {
+			state.GetColumnReader(col_idx).Skip(result.size());
+			continue;
+		}
+		auto &result_vector = result.data[i];
+		auto &child_reader = state.GetColumnReader(col_idx);
+		if (metadata->crypto_metadata->encryption_algorithm.__isset.AES_GCM_V1) {
+			child_reader.InitializeCryptoMetadata(metadata->crypto_metadata->encryption_algorithm,
+													GetGroup(state).ordinal);
+		}
+		// scan data by zones
+		auto cur_offset = state.offset_in_group;
+		bool support_selective_scan = child_reader.SupportsDirectSelect();
+		if (support_selective_scan && !is_zoned_sel_up_to_date){
+			zoned_sel.UpdateBy(state.sel, filter_count);
+			is_zoned_sel_up_to_date = true;
+		}
+		idx_t scanned_count = 0;
+		for (idx_t j = 0; j < zoned_sel.NumZones(); j++){
+			auto zone = zoned_sel.GetZone(j);
+			// skip the gap between zones
+			if(cur_offset < zone.begin){
+				child_reader.Skip(zone.begin - cur_offset);
+			}
+			ColumnReaderInput reader_input(zone.Size(), define_ptr, repeat_ptr);
+			child_reader.result_write_offset = scanned_count;
+			if (support_selective_scan){
+				// selectively load zones
+				child_reader.Select(reader_input, result_vector, *zoned_sel.GetSel(j), zoned_sel.GetSelSize(j));
+			} else {
+				child_reader.Read(reader_input, result_vector);
+			}
+			child_reader.result_write_offset = 0;
+			scanned_count += zone.Size();
+			cur_offset = zone.end;
+		}
+	}
+	if (scan_count != filter_count) {
+		result.Slice(state.sel, filter_count);
+	}
+
+	result.SetChildCardinality(result.size());
+	rows_read += scan_count;
+	state.offset_in_group = zoned_sel.GetZone(zoned_sel.NumZones() - 1).end;
+	return SourceResultType::HAVE_MORE_OUTPUT;
+}
+
+
 AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &state, DataChunk &result) {
 	result.Reset();
 	if (state.finished) {
@@ -1671,10 +1838,14 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 		state.group_offset = GetRowGroupOffset(*this, state.group_idx_list[state.current_group]);
 
 		uint64_t to_scan_compressed_bytes = 0;
+		state.row_group_zone_iterator.reset();
 		for (idx_t i = 0; i < column_ids.size(); i++) {
 			auto col_idx = MultiFileLocalIndex(i);
 			PrepareRowGroupBuffer(state, col_idx);
 			to_scan_compressed_bytes += state.GetColumnReader(i).TotalCompressedSize();
+		}
+		if (state.row_group_zone_iterator){
+			state.row_group_zone_iterator->ResetIteration();
 		}
 
 		auto &group = GetGroup(state);
@@ -1721,6 +1892,10 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 		}
 		result.Reset();
 		return SourceResultType::HAVE_MORE_OUTPUT;
+	}
+
+	if(state.row_group_zone_iterator){
+		return ScanByZones(context, state, result);
 	}
 
 	auto scan_count = MinValue<idx_t>(STANDARD_VECTOR_SIZE, GetGroup(state).num_rows - state.offset_in_group);
@@ -1836,6 +2011,7 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 		}
 	}
 
+	// what's the difference between result's cardinality and count(size)?
 	result.SetChildCardinality(result.size());
 	rows_read += scan_count;
 	state.offset_in_group += scan_count;

@@ -460,6 +460,8 @@ class SortingColumn;
 
 class PageEncodingStats;
 
+class ZoningStatistics;
+
 class ColumnMetaData;
 
 class EncryptionWithFooterKey;
@@ -2318,8 +2320,46 @@ void swap(PageEncodingStats &a, PageEncodingStats &b);
 
 std::ostream& operator<<(std::ostream& out, const PageEncodingStats& obj);
 
+typedef struct _ZoningStatistics__isset {
+  _ZoningStatistics__isset() : min_values(false), max_values(false) {}
+  bool min_values :1;
+  bool max_values :1;
+} _ZoningStatistics__isset;
+
+class ZoningStatistics : public virtual ::apache::thrift::TBase {
+ public:
+
+  ZoningStatistics(const ZoningStatistics&);
+  ZoningStatistics(ZoningStatistics&&) noexcept;
+  ZoningStatistics& operator=(const ZoningStatistics&);
+  ZoningStatistics& operator=(ZoningStatistics&&) noexcept;
+  ZoningStatistics() noexcept;
+
+  virtual ~ZoningStatistics() noexcept;
+  duckdb::vector<int64_t>  zone_offset;
+  std::string min_values;
+  std::string max_values;
+
+  _ZoningStatistics__isset __isset;
+
+  void __set_zone_offset(const duckdb::vector<int64_t> & val);
+
+  void __set_min_values(const std::string& val);
+
+  void __set_max_values(const std::string& val);
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot) override;
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const override;
+
+  virtual void printTo(std::ostream& out) const;
+};
+
+void swap(ZoningStatistics &a, ZoningStatistics &b);
+
+std::ostream& operator<<(std::ostream& out, const ZoningStatistics& obj);
+
 typedef struct _ColumnMetaData__isset {
-  _ColumnMetaData__isset() : key_value_metadata(false), index_page_offset(false), dictionary_page_offset(false), statistics(false), encoding_stats(false), bloom_filter_offset(false), bloom_filter_length(false), size_statistics(false), geospatial_statistics(false) {}
+  _ColumnMetaData__isset() : key_value_metadata(false), index_page_offset(false), dictionary_page_offset(false), statistics(false), encoding_stats(false), bloom_filter_offset(false), bloom_filter_length(false), size_statistics(false), geospatial_statistics(false), zoning_statistics(false) {}
   bool key_value_metadata :1;
   bool index_page_offset :1;
   bool dictionary_page_offset :1;
@@ -2329,6 +2369,7 @@ typedef struct _ColumnMetaData__isset {
   bool bloom_filter_length :1;
   bool size_statistics :1;
   bool geospatial_statistics :1;
+  bool zoning_statistics :1;
 } _ColumnMetaData__isset;
 
 /**
@@ -2427,6 +2468,7 @@ class ColumnMetaData : public virtual ::apache::thrift::TBase {
    * Optional statistics specific for Geometry and Geography logical types
    */
   GeospatialStatistics geospatial_statistics;
+  ZoningStatistics zoning_statistics;
 
   _ColumnMetaData__isset __isset;
 
@@ -2463,6 +2505,8 @@ class ColumnMetaData : public virtual ::apache::thrift::TBase {
   void __set_size_statistics(const SizeStatistics& val);
 
   void __set_geospatial_statistics(const GeospatialStatistics& val);
+
+  void __set_zoning_statistics(const ZoningStatistics& val);
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot) override;
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const override;

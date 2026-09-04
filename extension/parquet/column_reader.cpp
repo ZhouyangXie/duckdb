@@ -686,7 +686,7 @@ bool ColumnReader::PrepareRead(idx_t read_now, data_ptr_t define_out, data_ptr_t
 void ColumnReader::ReadData(idx_t read_now, data_ptr_t define_out, data_ptr_t repeat_out, Vector &result,
                             idx_t result_offset) {
 	// flatten the result vector if required
-	if (result_offset != 0 && result.GetVectorType() != VectorType::FLAT_VECTOR) {
+	if ((result_offset + result_write_offset) != 0 && result.GetVectorType() != VectorType::FLAT_VECTOR) {
 		result.Flatten();
 		result.Reserve(STANDARD_VECTOR_SIZE);
 	}
@@ -694,7 +694,7 @@ void ColumnReader::ReadData(idx_t read_now, data_ptr_t define_out, data_ptr_t re
 		// page is filtered out - emit NULL for any rows
 		auto &validity = FlatVector::ValidityMutable(result);
 		for (idx_t i = 0; i < read_now; i++) {
-			validity.SetInvalid(result_offset + i);
+			validity.SetInvalid(result_offset + result_write_offset + i);
 		}
 		page_rows_available -= read_now;
 		return;
@@ -705,21 +705,26 @@ void ColumnReader::ReadData(idx_t read_now, data_ptr_t define_out, data_ptr_t re
 	const auto define_ptr = all_valid ? nullptr : static_cast<uint8_t *>(define_out);
 	switch (encoding) {
 	case ColumnEncoding::DICTIONARY:
-		dictionary_decoder.Read(define_ptr, read_now, result, result_offset);
+		dictionary_decoder.Read(define_ptr, read_now, result, result_offset, result_write_offset);
 		break;
 	case ColumnEncoding::DELTA_BINARY_PACKED:
+		D_ASSERT(result_write_offset == 0);  // not implemented yet
 		delta_binary_packed_decoder.Read(define_ptr, read_now, result, result_offset);
 		break;
 	case ColumnEncoding::RLE:
+		D_ASSERT(result_write_offset == 0);  // not implemented yet
 		rle_decoder.Read(define_ptr, read_now, result, result_offset);
 		break;
 	case ColumnEncoding::DELTA_LENGTH_BYTE_ARRAY:
+		D_ASSERT(result_write_offset == 0);  // not implemented yet
 		delta_length_byte_array_decoder.Read(block, define_ptr, read_now, result, result_offset);
 		break;
 	case ColumnEncoding::DELTA_BYTE_ARRAY:
+		D_ASSERT(result_write_offset == 0);  // not implemented yet
 		delta_byte_array_decoder.Read(define_ptr, read_now, result, result_offset);
 		break;
 	case ColumnEncoding::BYTE_STREAM_SPLIT:
+		D_ASSERT(result_write_offset == 0);  // not implemented yet
 		byte_stream_split_decoder.Read(define_ptr, read_now, result, result_offset);
 		break;
 	default:
@@ -787,9 +792,14 @@ void ColumnReader::DirectSelect(ColumnReaderInput &input, Vector &result, const 
 	auto read_now = ReadPageHeaders(to_read);
 
 	// we can only push the filter into the decoder if we are reading the ENTIRE vector in one go
+	// TODO: even if not in one go, we can still selectively read in many goes, which is useful for long strings
 	if (read_now == to_read && encoding == ColumnEncoding::PLAIN) {
 		const auto all_valid = PrepareRead(read_now, define_out, repeat_out, 0);
 		const auto define_ptr = all_valid ? nullptr : static_cast<uint8_t *>(define_out);
+		if (result_write_offset != 0 && result.GetVectorType() != VectorType::FLAT_VECTOR) {
+			result.Flatten();
+			result.Reserve(STANDARD_VECTOR_SIZE);
+		}
 		PlainSelect(block, define_ptr, read_now, result, sel, approved_tuple_count);
 
 		page_rows_available -= read_now;
@@ -814,6 +824,7 @@ void ColumnReader::Filter(ColumnReaderInput &input, Vector &result, const TableF
 
 void ColumnReader::DirectFilter(ColumnReaderInput &input, Vector &result, const TableFilter &filter,
                                 TableFilterState &filter_state, SelectionVector &sel, idx_t &approved_tuple_count) {
+	D_ASSERT(result_write_offset == 0);  // not quite needed to be handled here
 	auto &num_values = input.num_values;
 	auto &define_out = input.define_out;
 	auto &repeat_out = input.repeat_out;

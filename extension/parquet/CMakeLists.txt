@@ -29,7 +29,10 @@ set(PARQUET_EXTENSION_FILES
     parquet_column_schema.cpp
     parquet_geometry.cpp
     serialize_parquet.cpp
-    zstd_file_system.cpp)
+    zstd_file_system.cpp
+    zone_manager.cpp
+    zone_skipping.cpp
+    zoned_selection_vector.cpp)
 
 if(NOT CLANG_TIDY)
   # parquet/thrift/snappy

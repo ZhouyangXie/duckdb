@@ -85,6 +85,7 @@ static LogicalType GetIntermediateGroupType(optional_ptr<ColumnReader> typed_val
 }
 
 idx_t VariantColumnReader::Read(ColumnReaderInput &input, Vector &result) {
+	D_ASSERT(result_write_offset == 0);
 	if (pending_skips > 0) {
 		throw InternalException("VariantColumnReader cannot have pending skips");
 	}

@@ -21,6 +21,7 @@ static typename ENUM::type SafeEnumCast(const std::map<int, const char*> &values
   return static_cast<typename ENUM::type>(ecast);
 }
 
+
 int _kTypeValues[] = {
   Type::BOOLEAN,
   Type::INT32,
@@ -6611,6 +6612,182 @@ void PageEncodingStats::printTo(std::ostream& out) const {
 }
 
 
+ZoningStatistics::~ZoningStatistics() noexcept {
+}
+
+ZoningStatistics::ZoningStatistics() noexcept
+   : min_values(),
+     max_values() {
+}
+
+void ZoningStatistics::__set_zone_offset(const duckdb::vector<int64_t> & val) {
+  this->zone_offset = val;
+}
+
+void ZoningStatistics::__set_min_values(const std::string& val) {
+  this->min_values = val;
+__isset.min_values = true;
+}
+
+void ZoningStatistics::__set_max_values(const std::string& val) {
+  this->max_values = val;
+__isset.max_values = true;
+}
+std::ostream& operator<<(std::ostream& out, const ZoningStatistics& obj)
+{
+  obj.printTo(out);
+  return out;
+}
+
+
+uint32_t ZoningStatistics::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+  bool isset_zone_offset = false;
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->zone_offset.clear();
+            uint32_t _size198;
+            ::apache::thrift::protocol::TType _etype201;
+            xfer += iprot->readListBegin(_etype201, _size198);
+            this->zone_offset.resize(_size198);
+            uint32_t _i202;
+            for (_i202 = 0; _i202 < _size198; ++_i202)
+            {
+              xfer += iprot->readI64(this->zone_offset[_i202]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          isset_zone_offset = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 2:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readBinary(this->min_values);
+          this->__isset.min_values = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 3:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readBinary(this->max_values);
+          this->__isset.max_values = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  if (!isset_zone_offset)
+    throw TProtocolException(TProtocolException::INVALID_DATA);
+  return xfer;
+}
+
+uint32_t ZoningStatistics::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("ZoningStatistics");
+
+  xfer += oprot->writeFieldBegin("zone_offset", ::apache::thrift::protocol::T_LIST, 1);
+  {
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->zone_offset.size()));
+    duckdb::vector<int64_t> ::const_iterator _iter203;
+    for (_iter203 = this->zone_offset.begin(); _iter203 != this->zone_offset.end(); ++_iter203)
+    {
+      xfer += oprot->writeI64((*_iter203));
+    }
+    xfer += oprot->writeListEnd();
+  }
+  xfer += oprot->writeFieldEnd();
+
+  if (this->__isset.min_values) {
+    xfer += oprot->writeFieldBegin("min_values", ::apache::thrift::protocol::T_STRING, 2);
+    xfer += oprot->writeBinary(this->min_values);
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.max_values) {
+    xfer += oprot->writeFieldBegin("max_values", ::apache::thrift::protocol::T_STRING, 3);
+    xfer += oprot->writeBinary(this->max_values);
+    xfer += oprot->writeFieldEnd();
+  }
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+void swap(ZoningStatistics &a, ZoningStatistics &b) {
+  using ::std::swap;
+  swap(a.zone_offset, b.zone_offset);
+  swap(a.min_values, b.min_values);
+  swap(a.max_values, b.max_values);
+  swap(a.__isset, b.__isset);
+}
+
+ZoningStatistics::ZoningStatistics(const ZoningStatistics& other204) {
+  zone_offset = other204.zone_offset;
+  min_values = other204.min_values;
+  max_values = other204.max_values;
+  __isset = other204.__isset;
+}
+ZoningStatistics::ZoningStatistics(ZoningStatistics&& other205) noexcept {
+  zone_offset = std::move(other205.zone_offset);
+  min_values = std::move(other205.min_values);
+  max_values = std::move(other205.max_values);
+  __isset = other205.__isset;
+}
+ZoningStatistics& ZoningStatistics::operator=(const ZoningStatistics& other206) {
+  zone_offset = other206.zone_offset;
+  min_values = other206.min_values;
+  max_values = other206.max_values;
+  __isset = other206.__isset;
+  return *this;
+}
+ZoningStatistics& ZoningStatistics::operator=(ZoningStatistics&& other207) noexcept {
+  zone_offset = std::move(other207.zone_offset);
+  min_values = std::move(other207.min_values);
+  max_values = std::move(other207.max_values);
+  __isset = other207.__isset;
+  return *this;
+}
+void ZoningStatistics::printTo(std::ostream& out) const {
+  using ::apache::thrift::to_string;
+  out << "ZoningStatistics(";
+  out << "zone_offset=" << to_string(zone_offset);
+  out << ", " << "min_values="; (__isset.min_values ? (out << to_string(min_values)) : (out << "<null>"));
+  out << ", " << "max_values="; (__isset.max_values ? (out << to_string(max_values)) : (out << "<null>"));
+  out << ")";
+}
+
+
 ColumnMetaData::~ColumnMetaData() noexcept {
 }
 
@@ -6703,6 +6880,11 @@ void ColumnMetaData::__set_geospatial_statistics(const GeospatialStatistics& val
   this->geospatial_statistics = val;
 __isset.geospatial_statistics = true;
 }
+
+void ColumnMetaData::__set_zoning_statistics(const ZoningStatistics& val) {
+  this->zoning_statistics = val;
+__isset.zoning_statistics = true;
+}
 std::ostream& operator<<(std::ostream& out, const ColumnMetaData& obj)
 {
   obj.printTo(out);
@@ -6741,9 +6923,9 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
     {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t ecast198;
-          xfer += iprot->readI32(ecast198);
-          this->type = SafeEnumCast<Type>(_Type_VALUES_TO_NAMES, ecast198);
+          int32_t ecast208;
+          xfer += iprot->readI32(ecast208);
+          this->type = SafeEnumCast<Type>(_Type_VALUES_TO_NAMES, ecast208);
           isset_type = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -6753,16 +6935,16 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->encodings.clear();
-            uint32_t _size199;
-            ::apache::thrift::protocol::TType _etype202;
-            xfer += iprot->readListBegin(_etype202, _size199);
-            this->encodings.resize(_size199);
-            uint32_t _i203;
-            for (_i203 = 0; _i203 < _size199; ++_i203)
+            uint32_t _size209;
+            ::apache::thrift::protocol::TType _etype212;
+            xfer += iprot->readListBegin(_etype212, _size209);
+            this->encodings.resize(_size209);
+            uint32_t _i213;
+            for (_i213 = 0; _i213 < _size209; ++_i213)
             {
-              int32_t ecast204;
-              xfer += iprot->readI32(ecast204);
-              this->encodings[_i203] = SafeEnumCast<Encoding>(_Encoding_VALUES_TO_NAMES, ecast204);
+              int32_t ecast214;
+              xfer += iprot->readI32(ecast214);
+              this->encodings[_i213] = SafeEnumCast<Encoding>(_Encoding_VALUES_TO_NAMES, ecast214);
             }
             xfer += iprot->readListEnd();
           }
@@ -6775,14 +6957,14 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->path_in_schema.clear();
-            uint32_t _size205;
-            ::apache::thrift::protocol::TType _etype208;
-            xfer += iprot->readListBegin(_etype208, _size205);
-            this->path_in_schema.resize(_size205);
-            uint32_t _i209;
-            for (_i209 = 0; _i209 < _size205; ++_i209)
+            uint32_t _size215;
+            ::apache::thrift::protocol::TType _etype218;
+            xfer += iprot->readListBegin(_etype218, _size215);
+            this->path_in_schema.resize(_size215);
+            uint32_t _i219;
+            for (_i219 = 0; _i219 < _size215; ++_i219)
             {
-              xfer += iprot->readString(this->path_in_schema[_i209]);
+              xfer += iprot->readString(this->path_in_schema[_i219]);
             }
             xfer += iprot->readListEnd();
           }
@@ -6793,9 +6975,9 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         break;
       case 4:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t ecast210;
-          xfer += iprot->readI32(ecast210);
-          this->codec = SafeEnumCast<CompressionCodec>(_CompressionCodec_VALUES_TO_NAMES, ecast210);
+          int32_t ecast220;
+          xfer += iprot->readI32(ecast220);
+          this->codec = SafeEnumCast<CompressionCodec>(_CompressionCodec_VALUES_TO_NAMES, ecast220);
           isset_codec = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -6829,14 +7011,14 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->key_value_metadata.clear();
-            uint32_t _size211;
-            ::apache::thrift::protocol::TType _etype214;
-            xfer += iprot->readListBegin(_etype214, _size211);
-            this->key_value_metadata.resize(_size211);
-            uint32_t _i215;
-            for (_i215 = 0; _i215 < _size211; ++_i215)
+            uint32_t _size221;
+            ::apache::thrift::protocol::TType _etype224;
+            xfer += iprot->readListBegin(_etype224, _size221);
+            this->key_value_metadata.resize(_size221);
+            uint32_t _i225;
+            for (_i225 = 0; _i225 < _size221; ++_i225)
             {
-              xfer += this->key_value_metadata[_i215].read(iprot);
+              xfer += this->key_value_metadata[_i225].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -6881,14 +7063,14 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->encoding_stats.clear();
-            uint32_t _size216;
-            ::apache::thrift::protocol::TType _etype219;
-            xfer += iprot->readListBegin(_etype219, _size216);
-            this->encoding_stats.resize(_size216);
-            uint32_t _i220;
-            for (_i220 = 0; _i220 < _size216; ++_i220)
+            uint32_t _size226;
+            ::apache::thrift::protocol::TType _etype229;
+            xfer += iprot->readListBegin(_etype229, _size226);
+            this->encoding_stats.resize(_size226);
+            uint32_t _i230;
+            for (_i230 = 0; _i230 < _size226; ++_i230)
             {
-              xfer += this->encoding_stats[_i220].read(iprot);
+              xfer += this->encoding_stats[_i230].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -6925,6 +7107,14 @@ uint32_t ColumnMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
           xfer += this->geospatial_statistics.read(iprot);
           this->__isset.geospatial_statistics = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 18:
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->zoning_statistics.read(iprot);
+          this->__isset.zoning_statistics = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -6969,10 +7159,10 @@ uint32_t ColumnMetaData::write(::apache::thrift::protocol::TProtocol* oprot) con
   xfer += oprot->writeFieldBegin("encodings", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->encodings.size()));
-    duckdb::vector<Encoding::type> ::const_iterator _iter221;
-    for (_iter221 = this->encodings.begin(); _iter221 != this->encodings.end(); ++_iter221)
+    duckdb::vector<Encoding::type> ::const_iterator _iter231;
+    for (_iter231 = this->encodings.begin(); _iter231 != this->encodings.end(); ++_iter231)
     {
-      xfer += oprot->writeI32(static_cast<int32_t>((*_iter221)));
+      xfer += oprot->writeI32(static_cast<int32_t>((*_iter231)));
     }
     xfer += oprot->writeListEnd();
   }
@@ -6981,10 +7171,10 @@ uint32_t ColumnMetaData::write(::apache::thrift::protocol::TProtocol* oprot) con
   xfer += oprot->writeFieldBegin("path_in_schema", ::apache::thrift::protocol::T_LIST, 3);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->path_in_schema.size()));
-    duckdb::vector<std::string> ::const_iterator _iter222;
-    for (_iter222 = this->path_in_schema.begin(); _iter222 != this->path_in_schema.end(); ++_iter222)
+    duckdb::vector<std::string> ::const_iterator _iter232;
+    for (_iter232 = this->path_in_schema.begin(); _iter232 != this->path_in_schema.end(); ++_iter232)
     {
-      xfer += oprot->writeString((*_iter222));
+      xfer += oprot->writeString((*_iter232));
     }
     xfer += oprot->writeListEnd();
   }
@@ -7010,10 +7200,10 @@ uint32_t ColumnMetaData::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeFieldBegin("key_value_metadata", ::apache::thrift::protocol::T_LIST, 8);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->key_value_metadata.size()));
-      duckdb::vector<KeyValue> ::const_iterator _iter223;
-      for (_iter223 = this->key_value_metadata.begin(); _iter223 != this->key_value_metadata.end(); ++_iter223)
+      duckdb::vector<KeyValue> ::const_iterator _iter233;
+      for (_iter233 = this->key_value_metadata.begin(); _iter233 != this->key_value_metadata.end(); ++_iter233)
       {
-        xfer += (*_iter223).write(oprot);
+        xfer += (*_iter233).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -7042,10 +7232,10 @@ uint32_t ColumnMetaData::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeFieldBegin("encoding_stats", ::apache::thrift::protocol::T_LIST, 13);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->encoding_stats.size()));
-      duckdb::vector<PageEncodingStats> ::const_iterator _iter224;
-      for (_iter224 = this->encoding_stats.begin(); _iter224 != this->encoding_stats.end(); ++_iter224)
+      duckdb::vector<PageEncodingStats> ::const_iterator _iter234;
+      for (_iter234 = this->encoding_stats.begin(); _iter234 != this->encoding_stats.end(); ++_iter234)
       {
-        xfer += (*_iter224).write(oprot);
+        xfer += (*_iter234).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -7069,6 +7259,11 @@ uint32_t ColumnMetaData::write(::apache::thrift::protocol::TProtocol* oprot) con
   if (this->__isset.geospatial_statistics) {
     xfer += oprot->writeFieldBegin("geospatial_statistics", ::apache::thrift::protocol::T_STRUCT, 17);
     xfer += this->geospatial_statistics.write(oprot);
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.zoning_statistics) {
+    xfer += oprot->writeFieldBegin("zoning_statistics", ::apache::thrift::protocol::T_STRUCT, 18);
+    xfer += this->zoning_statistics.write(oprot);
     xfer += oprot->writeFieldEnd();
   }
   xfer += oprot->writeFieldStop();
@@ -7095,89 +7290,94 @@ void swap(ColumnMetaData &a, ColumnMetaData &b) {
   swap(a.bloom_filter_length, b.bloom_filter_length);
   swap(a.size_statistics, b.size_statistics);
   swap(a.geospatial_statistics, b.geospatial_statistics);
+  swap(a.zoning_statistics, b.zoning_statistics);
   swap(a.__isset, b.__isset);
 }
 
-ColumnMetaData::ColumnMetaData(const ColumnMetaData& other225) {
-  type = other225.type;
-  encodings = other225.encodings;
-  path_in_schema = other225.path_in_schema;
-  codec = other225.codec;
-  num_values = other225.num_values;
-  total_uncompressed_size = other225.total_uncompressed_size;
-  total_compressed_size = other225.total_compressed_size;
-  key_value_metadata = other225.key_value_metadata;
-  data_page_offset = other225.data_page_offset;
-  index_page_offset = other225.index_page_offset;
-  dictionary_page_offset = other225.dictionary_page_offset;
-  statistics = other225.statistics;
-  encoding_stats = other225.encoding_stats;
-  bloom_filter_offset = other225.bloom_filter_offset;
-  bloom_filter_length = other225.bloom_filter_length;
-  size_statistics = other225.size_statistics;
-  geospatial_statistics = other225.geospatial_statistics;
-  __isset = other225.__isset;
+ColumnMetaData::ColumnMetaData(const ColumnMetaData& other235) {
+  type = other235.type;
+  encodings = other235.encodings;
+  path_in_schema = other235.path_in_schema;
+  codec = other235.codec;
+  num_values = other235.num_values;
+  total_uncompressed_size = other235.total_uncompressed_size;
+  total_compressed_size = other235.total_compressed_size;
+  key_value_metadata = other235.key_value_metadata;
+  data_page_offset = other235.data_page_offset;
+  index_page_offset = other235.index_page_offset;
+  dictionary_page_offset = other235.dictionary_page_offset;
+  statistics = other235.statistics;
+  encoding_stats = other235.encoding_stats;
+  bloom_filter_offset = other235.bloom_filter_offset;
+  bloom_filter_length = other235.bloom_filter_length;
+  size_statistics = other235.size_statistics;
+  geospatial_statistics = other235.geospatial_statistics;
+  zoning_statistics = other235.zoning_statistics;
+  __isset = other235.__isset;
 }
-ColumnMetaData::ColumnMetaData(ColumnMetaData&& other226) noexcept {
-  type = other226.type;
-  encodings = std::move(other226.encodings);
-  path_in_schema = std::move(other226.path_in_schema);
-  codec = other226.codec;
-  num_values = other226.num_values;
-  total_uncompressed_size = other226.total_uncompressed_size;
-  total_compressed_size = other226.total_compressed_size;
-  key_value_metadata = std::move(other226.key_value_metadata);
-  data_page_offset = other226.data_page_offset;
-  index_page_offset = other226.index_page_offset;
-  dictionary_page_offset = other226.dictionary_page_offset;
-  statistics = std::move(other226.statistics);
-  encoding_stats = std::move(other226.encoding_stats);
-  bloom_filter_offset = other226.bloom_filter_offset;
-  bloom_filter_length = other226.bloom_filter_length;
-  size_statistics = std::move(other226.size_statistics);
-  geospatial_statistics = std::move(other226.geospatial_statistics);
-  __isset = other226.__isset;
+ColumnMetaData::ColumnMetaData(ColumnMetaData&& other236) noexcept {
+  type = other236.type;
+  encodings = std::move(other236.encodings);
+  path_in_schema = std::move(other236.path_in_schema);
+  codec = other236.codec;
+  num_values = other236.num_values;
+  total_uncompressed_size = other236.total_uncompressed_size;
+  total_compressed_size = other236.total_compressed_size;
+  key_value_metadata = std::move(other236.key_value_metadata);
+  data_page_offset = other236.data_page_offset;
+  index_page_offset = other236.index_page_offset;
+  dictionary_page_offset = other236.dictionary_page_offset;
+  statistics = std::move(other236.statistics);
+  encoding_stats = std::move(other236.encoding_stats);
+  bloom_filter_offset = other236.bloom_filter_offset;
+  bloom_filter_length = other236.bloom_filter_length;
+  size_statistics = std::move(other236.size_statistics);
+  geospatial_statistics = std::move(other236.geospatial_statistics);
+  zoning_statistics = std::move(other236.zoning_statistics);
+  __isset = other236.__isset;
 }
-ColumnMetaData& ColumnMetaData::operator=(const ColumnMetaData& other227) {
-  type = other227.type;
-  encodings = other227.encodings;
-  path_in_schema = other227.path_in_schema;
-  codec = other227.codec;
-  num_values = other227.num_values;
-  total_uncompressed_size = other227.total_uncompressed_size;
-  total_compressed_size = other227.total_compressed_size;
-  key_value_metadata = other227.key_value_metadata;
-  data_page_offset = other227.data_page_offset;
-  index_page_offset = other227.index_page_offset;
-  dictionary_page_offset = other227.dictionary_page_offset;
-  statistics = other227.statistics;
-  encoding_stats = other227.encoding_stats;
-  bloom_filter_offset = other227.bloom_filter_offset;
-  bloom_filter_length = other227.bloom_filter_length;
-  size_statistics = other227.size_statistics;
-  geospatial_statistics = other227.geospatial_statistics;
-  __isset = other227.__isset;
+ColumnMetaData& ColumnMetaData::operator=(const ColumnMetaData& other237) {
+  type = other237.type;
+  encodings = other237.encodings;
+  path_in_schema = other237.path_in_schema;
+  codec = other237.codec;
+  num_values = other237.num_values;
+  total_uncompressed_size = other237.total_uncompressed_size;
+  total_compressed_size = other237.total_compressed_size;
+  key_value_metadata = other237.key_value_metadata;
+  data_page_offset = other237.data_page_offset;
+  index_page_offset = other237.index_page_offset;
+  dictionary_page_offset = other237.dictionary_page_offset;
+  statistics = other237.statistics;
+  encoding_stats = other237.encoding_stats;
+  bloom_filter_offset = other237.bloom_filter_offset;
+  bloom_filter_length = other237.bloom_filter_length;
+  size_statistics = other237.size_statistics;
+  geospatial_statistics = other237.geospatial_statistics;
+  zoning_statistics = other237.zoning_statistics;
+  __isset = other237.__isset;
   return *this;
 }
-ColumnMetaData& ColumnMetaData::operator=(ColumnMetaData&& other228) noexcept {
-  type = other228.type;
-  encodings = std::move(other228.encodings);
-  path_in_schema = std::move(other228.path_in_schema);
-  codec = other228.codec;
-  num_values = other228.num_values;
-  total_uncompressed_size = other228.total_uncompressed_size;
-  total_compressed_size = other228.total_compressed_size;
-  key_value_metadata = std::move(other228.key_value_metadata);
-  data_page_offset = other228.data_page_offset;
-  index_page_offset = other228.index_page_offset;
-  dictionary_page_offset = other228.dictionary_page_offset;
-  statistics = std::move(other228.statistics);
-  encoding_stats = std::move(other228.encoding_stats);
-  bloom_filter_offset = other228.bloom_filter_offset;
-  bloom_filter_length = other228.bloom_filter_length;
-  size_statistics = std::move(other228.size_statistics);
-  geospatial_statistics = std::move(other228.geospatial_statistics);
-  __isset = other228.__isset;
+ColumnMetaData& ColumnMetaData::operator=(ColumnMetaData&& other238) noexcept {
+  type = other238.type;
+  encodings = std::move(other238.encodings);
+  path_in_schema = std::move(other238.path_in_schema);
+  codec = other238.codec;
+  num_values = other238.num_values;
+  total_uncompressed_size = other238.total_uncompressed_size;
+  total_compressed_size = other238.total_compressed_size;
+  key_value_metadata = std::move(other238.key_value_metadata);
+  data_page_offset = other238.data_page_offset;
+  index_page_offset = other238.index_page_offset;
+  dictionary_page_offset = other238.dictionary_page_offset;
+  statistics = std::move(other238.statistics);
+  encoding_stats = std::move(other238.encoding_stats);
+  bloom_filter_offset = other238.bloom_filter_offset;
+  bloom_filter_length = other238.bloom_filter_length;
+  size_statistics = std::move(other238.size_statistics);
+  geospatial_statistics = std::move(other238.geospatial_statistics);
+  zoning_statistics = std::move(other238.zoning_statistics);
+  __isset = other238.__isset;
   return *this;
 }
 void ColumnMetaData::printTo(std::ostream& out) const {
@@ -7200,6 +7400,7 @@ void ColumnMetaData::printTo(std::ostream& out) const {
   out << ", " << "bloom_filter_length="; (__isset.bloom_filter_length ? (out << to_string(bloom_filter_length)) : (out << "<null>"));
   out << ", " << "size_statistics="; (__isset.size_statistics ? (out << to_string(size_statistics)) : (out << "<null>"));
   out << ", " << "geospatial_statistics="; (__isset.geospatial_statistics ? (out << to_string(geospatial_statistics)) : (out << "<null>"));
+  out << ", " << "zoning_statistics="; (__isset.zoning_statistics ? (out << to_string(zoning_statistics)) : (out << "<null>"));
   out << ")";
 }
 
@@ -7260,18 +7461,18 @@ void swap(EncryptionWithFooterKey &a, EncryptionWithFooterKey &b) {
   (void) b;
 }
 
-EncryptionWithFooterKey::EncryptionWithFooterKey(const EncryptionWithFooterKey& other229) noexcept {
-  (void) other229;
+EncryptionWithFooterKey::EncryptionWithFooterKey(const EncryptionWithFooterKey& other239) noexcept {
+  (void) other239;
 }
-EncryptionWithFooterKey::EncryptionWithFooterKey(EncryptionWithFooterKey&& other230) noexcept {
-  (void) other230;
+EncryptionWithFooterKey::EncryptionWithFooterKey(EncryptionWithFooterKey&& other240) noexcept {
+  (void) other240;
 }
-EncryptionWithFooterKey& EncryptionWithFooterKey::operator=(const EncryptionWithFooterKey& other231) noexcept {
-  (void) other231;
+EncryptionWithFooterKey& EncryptionWithFooterKey::operator=(const EncryptionWithFooterKey& other241) noexcept {
+  (void) other241;
   return *this;
 }
-EncryptionWithFooterKey& EncryptionWithFooterKey::operator=(EncryptionWithFooterKey&& other232) noexcept {
-  (void) other232;
+EncryptionWithFooterKey& EncryptionWithFooterKey::operator=(EncryptionWithFooterKey&& other242) noexcept {
+  (void) other242;
   return *this;
 }
 void EncryptionWithFooterKey::printTo(std::ostream& out) const {
@@ -7329,14 +7530,14 @@ uint32_t EncryptionWithColumnKey::read(::apache::thrift::protocol::TProtocol* ip
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->path_in_schema.clear();
-            uint32_t _size233;
-            ::apache::thrift::protocol::TType _etype236;
-            xfer += iprot->readListBegin(_etype236, _size233);
-            this->path_in_schema.resize(_size233);
-            uint32_t _i237;
-            for (_i237 = 0; _i237 < _size233; ++_i237)
+            uint32_t _size243;
+            ::apache::thrift::protocol::TType _etype246;
+            xfer += iprot->readListBegin(_etype246, _size243);
+            this->path_in_schema.resize(_size243);
+            uint32_t _i247;
+            for (_i247 = 0; _i247 < _size243; ++_i247)
             {
-              xfer += iprot->readString(this->path_in_schema[_i237]);
+              xfer += iprot->readString(this->path_in_schema[_i247]);
             }
             xfer += iprot->readListEnd();
           }
@@ -7375,10 +7576,10 @@ uint32_t EncryptionWithColumnKey::write(::apache::thrift::protocol::TProtocol* o
   xfer += oprot->writeFieldBegin("path_in_schema", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->path_in_schema.size()));
-    duckdb::vector<std::string> ::const_iterator _iter238;
-    for (_iter238 = this->path_in_schema.begin(); _iter238 != this->path_in_schema.end(); ++_iter238)
+    duckdb::vector<std::string> ::const_iterator _iter248;
+    for (_iter248 = this->path_in_schema.begin(); _iter248 != this->path_in_schema.end(); ++_iter248)
     {
-      xfer += oprot->writeString((*_iter238));
+      xfer += oprot->writeString((*_iter248));
     }
     xfer += oprot->writeListEnd();
   }
@@ -7401,26 +7602,26 @@ void swap(EncryptionWithColumnKey &a, EncryptionWithColumnKey &b) {
   swap(a.__isset, b.__isset);
 }
 
-EncryptionWithColumnKey::EncryptionWithColumnKey(const EncryptionWithColumnKey& other239) {
-  path_in_schema = other239.path_in_schema;
-  key_metadata = other239.key_metadata;
-  __isset = other239.__isset;
+EncryptionWithColumnKey::EncryptionWithColumnKey(const EncryptionWithColumnKey& other249) {
+  path_in_schema = other249.path_in_schema;
+  key_metadata = other249.key_metadata;
+  __isset = other249.__isset;
 }
-EncryptionWithColumnKey::EncryptionWithColumnKey(EncryptionWithColumnKey&& other240) noexcept {
-  path_in_schema = std::move(other240.path_in_schema);
-  key_metadata = std::move(other240.key_metadata);
-  __isset = other240.__isset;
+EncryptionWithColumnKey::EncryptionWithColumnKey(EncryptionWithColumnKey&& other250) noexcept {
+  path_in_schema = std::move(other250.path_in_schema);
+  key_metadata = std::move(other250.key_metadata);
+  __isset = other250.__isset;
 }
-EncryptionWithColumnKey& EncryptionWithColumnKey::operator=(const EncryptionWithColumnKey& other241) {
-  path_in_schema = other241.path_in_schema;
-  key_metadata = other241.key_metadata;
-  __isset = other241.__isset;
+EncryptionWithColumnKey& EncryptionWithColumnKey::operator=(const EncryptionWithColumnKey& other251) {
+  path_in_schema = other251.path_in_schema;
+  key_metadata = other251.key_metadata;
+  __isset = other251.__isset;
   return *this;
 }
-EncryptionWithColumnKey& EncryptionWithColumnKey::operator=(EncryptionWithColumnKey&& other242) noexcept {
-  path_in_schema = std::move(other242.path_in_schema);
-  key_metadata = std::move(other242.key_metadata);
-  __isset = other242.__isset;
+EncryptionWithColumnKey& EncryptionWithColumnKey::operator=(EncryptionWithColumnKey&& other252) noexcept {
+  path_in_schema = std::move(other252.path_in_schema);
+  key_metadata = std::move(other252.key_metadata);
+  __isset = other252.__isset;
   return *this;
 }
 void EncryptionWithColumnKey::printTo(std::ostream& out) const {
@@ -7530,26 +7731,26 @@ void swap(ColumnCryptoMetaData &a, ColumnCryptoMetaData &b) {
   swap(a.__isset, b.__isset);
 }
 
-ColumnCryptoMetaData::ColumnCryptoMetaData(const ColumnCryptoMetaData& other243) {
-  ENCRYPTION_WITH_FOOTER_KEY = other243.ENCRYPTION_WITH_FOOTER_KEY;
-  ENCRYPTION_WITH_COLUMN_KEY = other243.ENCRYPTION_WITH_COLUMN_KEY;
-  __isset = other243.__isset;
+ColumnCryptoMetaData::ColumnCryptoMetaData(const ColumnCryptoMetaData& other253) {
+  ENCRYPTION_WITH_FOOTER_KEY = other253.ENCRYPTION_WITH_FOOTER_KEY;
+  ENCRYPTION_WITH_COLUMN_KEY = other253.ENCRYPTION_WITH_COLUMN_KEY;
+  __isset = other253.__isset;
 }
-ColumnCryptoMetaData::ColumnCryptoMetaData(ColumnCryptoMetaData&& other244) noexcept {
-  ENCRYPTION_WITH_FOOTER_KEY = std::move(other244.ENCRYPTION_WITH_FOOTER_KEY);
-  ENCRYPTION_WITH_COLUMN_KEY = std::move(other244.ENCRYPTION_WITH_COLUMN_KEY);
-  __isset = other244.__isset;
+ColumnCryptoMetaData::ColumnCryptoMetaData(ColumnCryptoMetaData&& other254) noexcept {
+  ENCRYPTION_WITH_FOOTER_KEY = std::move(other254.ENCRYPTION_WITH_FOOTER_KEY);
+  ENCRYPTION_WITH_COLUMN_KEY = std::move(other254.ENCRYPTION_WITH_COLUMN_KEY);
+  __isset = other254.__isset;
 }
-ColumnCryptoMetaData& ColumnCryptoMetaData::operator=(const ColumnCryptoMetaData& other245) {
-  ENCRYPTION_WITH_FOOTER_KEY = other245.ENCRYPTION_WITH_FOOTER_KEY;
-  ENCRYPTION_WITH_COLUMN_KEY = other245.ENCRYPTION_WITH_COLUMN_KEY;
-  __isset = other245.__isset;
+ColumnCryptoMetaData& ColumnCryptoMetaData::operator=(const ColumnCryptoMetaData& other255) {
+  ENCRYPTION_WITH_FOOTER_KEY = other255.ENCRYPTION_WITH_FOOTER_KEY;
+  ENCRYPTION_WITH_COLUMN_KEY = other255.ENCRYPTION_WITH_COLUMN_KEY;
+  __isset = other255.__isset;
   return *this;
 }
-ColumnCryptoMetaData& ColumnCryptoMetaData::operator=(ColumnCryptoMetaData&& other246) noexcept {
-  ENCRYPTION_WITH_FOOTER_KEY = std::move(other246.ENCRYPTION_WITH_FOOTER_KEY);
-  ENCRYPTION_WITH_COLUMN_KEY = std::move(other246.ENCRYPTION_WITH_COLUMN_KEY);
-  __isset = other246.__isset;
+ColumnCryptoMetaData& ColumnCryptoMetaData::operator=(ColumnCryptoMetaData&& other256) noexcept {
+  ENCRYPTION_WITH_FOOTER_KEY = std::move(other256.ENCRYPTION_WITH_FOOTER_KEY);
+  ENCRYPTION_WITH_COLUMN_KEY = std::move(other256.ENCRYPTION_WITH_COLUMN_KEY);
+  __isset = other256.__isset;
   return *this;
 }
 void ColumnCryptoMetaData::printTo(std::ostream& out) const {
@@ -7800,54 +8001,54 @@ void swap(ColumnChunk &a, ColumnChunk &b) {
   swap(a.__isset, b.__isset);
 }
 
-ColumnChunk::ColumnChunk(const ColumnChunk& other247) {
-  file_path = other247.file_path;
-  file_offset = other247.file_offset;
-  meta_data = other247.meta_data;
-  offset_index_offset = other247.offset_index_offset;
-  offset_index_length = other247.offset_index_length;
-  column_index_offset = other247.column_index_offset;
-  column_index_length = other247.column_index_length;
-  crypto_metadata = other247.crypto_metadata;
-  encrypted_column_metadata = other247.encrypted_column_metadata;
-  __isset = other247.__isset;
+ColumnChunk::ColumnChunk(const ColumnChunk& other257) {
+  file_path = other257.file_path;
+  file_offset = other257.file_offset;
+  meta_data = other257.meta_data;
+  offset_index_offset = other257.offset_index_offset;
+  offset_index_length = other257.offset_index_length;
+  column_index_offset = other257.column_index_offset;
+  column_index_length = other257.column_index_length;
+  crypto_metadata = other257.crypto_metadata;
+  encrypted_column_metadata = other257.encrypted_column_metadata;
+  __isset = other257.__isset;
 }
-ColumnChunk::ColumnChunk(ColumnChunk&& other248) noexcept {
-  file_path = std::move(other248.file_path);
-  file_offset = other248.file_offset;
-  meta_data = std::move(other248.meta_data);
-  offset_index_offset = other248.offset_index_offset;
-  offset_index_length = other248.offset_index_length;
-  column_index_offset = other248.column_index_offset;
-  column_index_length = other248.column_index_length;
-  crypto_metadata = std::move(other248.crypto_metadata);
-  encrypted_column_metadata = std::move(other248.encrypted_column_metadata);
-  __isset = other248.__isset;
+ColumnChunk::ColumnChunk(ColumnChunk&& other258) noexcept {
+  file_path = std::move(other258.file_path);
+  file_offset = other258.file_offset;
+  meta_data = std::move(other258.meta_data);
+  offset_index_offset = other258.offset_index_offset;
+  offset_index_length = other258.offset_index_length;
+  column_index_offset = other258.column_index_offset;
+  column_index_length = other258.column_index_length;
+  crypto_metadata = std::move(other258.crypto_metadata);
+  encrypted_column_metadata = std::move(other258.encrypted_column_metadata);
+  __isset = other258.__isset;
 }
-ColumnChunk& ColumnChunk::operator=(const ColumnChunk& other249) {
-  file_path = other249.file_path;
-  file_offset = other249.file_offset;
-  meta_data = other249.meta_data;
-  offset_index_offset = other249.offset_index_offset;
-  offset_index_length = other249.offset_index_length;
-  column_index_offset = other249.column_index_offset;
-  column_index_length = other249.column_index_length;
-  crypto_metadata = other249.crypto_metadata;
-  encrypted_column_metadata = other249.encrypted_column_metadata;
-  __isset = other249.__isset;
+ColumnChunk& ColumnChunk::operator=(const ColumnChunk& other259) {
+  file_path = other259.file_path;
+  file_offset = other259.file_offset;
+  meta_data = other259.meta_data;
+  offset_index_offset = other259.offset_index_offset;
+  offset_index_length = other259.offset_index_length;
+  column_index_offset = other259.column_index_offset;
+  column_index_length = other259.column_index_length;
+  crypto_metadata = other259.crypto_metadata;
+  encrypted_column_metadata = other259.encrypted_column_metadata;
+  __isset = other259.__isset;
   return *this;
 }
-ColumnChunk& ColumnChunk::operator=(ColumnChunk&& other250) noexcept {
-  file_path = std::move(other250.file_path);
-  file_offset = other250.file_offset;
-  meta_data = std::move(other250.meta_data);
-  offset_index_offset = other250.offset_index_offset;
-  offset_index_length = other250.offset_index_length;
-  column_index_offset = other250.column_index_offset;
-  column_index_length = other250.column_index_length;
-  crypto_metadata = std::move(other250.crypto_metadata);
-  encrypted_column_metadata = std::move(other250.encrypted_column_metadata);
-  __isset = other250.__isset;
+ColumnChunk& ColumnChunk::operator=(ColumnChunk&& other260) noexcept {
+  file_path = std::move(other260.file_path);
+  file_offset = other260.file_offset;
+  meta_data = std::move(other260.meta_data);
+  offset_index_offset = other260.offset_index_offset;
+  offset_index_length = other260.offset_index_length;
+  column_index_offset = other260.column_index_offset;
+  column_index_length = other260.column_index_length;
+  crypto_metadata = std::move(other260.crypto_metadata);
+  encrypted_column_metadata = std::move(other260.encrypted_column_metadata);
+  __isset = other260.__isset;
   return *this;
 }
 void ColumnChunk::printTo(std::ostream& out) const {
@@ -7943,14 +8144,14 @@ uint32_t RowGroup::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->columns.clear();
-            uint32_t _size251;
-            ::apache::thrift::protocol::TType _etype254;
-            xfer += iprot->readListBegin(_etype254, _size251);
-            this->columns.resize(_size251);
-            uint32_t _i255;
-            for (_i255 = 0; _i255 < _size251; ++_i255)
+            uint32_t _size261;
+            ::apache::thrift::protocol::TType _etype264;
+            xfer += iprot->readListBegin(_etype264, _size261);
+            this->columns.resize(_size261);
+            uint32_t _i265;
+            for (_i265 = 0; _i265 < _size261; ++_i265)
             {
-              xfer += this->columns[_i255].read(iprot);
+              xfer += this->columns[_i265].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -7979,14 +8180,14 @@ uint32_t RowGroup::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->sorting_columns.clear();
-            uint32_t _size256;
-            ::apache::thrift::protocol::TType _etype259;
-            xfer += iprot->readListBegin(_etype259, _size256);
-            this->sorting_columns.resize(_size256);
-            uint32_t _i260;
-            for (_i260 = 0; _i260 < _size256; ++_i260)
+            uint32_t _size266;
+            ::apache::thrift::protocol::TType _etype269;
+            xfer += iprot->readListBegin(_etype269, _size266);
+            this->sorting_columns.resize(_size266);
+            uint32_t _i270;
+            for (_i270 = 0; _i270 < _size266; ++_i270)
             {
-              xfer += this->sorting_columns[_i260].read(iprot);
+              xfer += this->sorting_columns[_i270].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -8045,10 +8246,10 @@ uint32_t RowGroup::write(::apache::thrift::protocol::TProtocol* oprot) const {
   xfer += oprot->writeFieldBegin("columns", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->columns.size()));
-    duckdb::vector<ColumnChunk> ::const_iterator _iter261;
-    for (_iter261 = this->columns.begin(); _iter261 != this->columns.end(); ++_iter261)
+    duckdb::vector<ColumnChunk> ::const_iterator _iter271;
+    for (_iter271 = this->columns.begin(); _iter271 != this->columns.end(); ++_iter271)
     {
-      xfer += (*_iter261).write(oprot);
+      xfer += (*_iter271).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -8066,10 +8267,10 @@ uint32_t RowGroup::write(::apache::thrift::protocol::TProtocol* oprot) const {
     xfer += oprot->writeFieldBegin("sorting_columns", ::apache::thrift::protocol::T_LIST, 4);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->sorting_columns.size()));
-      duckdb::vector<SortingColumn> ::const_iterator _iter262;
-      for (_iter262 = this->sorting_columns.begin(); _iter262 != this->sorting_columns.end(); ++_iter262)
+      duckdb::vector<SortingColumn> ::const_iterator _iter272;
+      for (_iter272 = this->sorting_columns.begin(); _iter272 != this->sorting_columns.end(); ++_iter272)
       {
-        xfer += (*_iter262).write(oprot);
+        xfer += (*_iter272).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -8107,46 +8308,46 @@ void swap(RowGroup &a, RowGroup &b) {
   swap(a.__isset, b.__isset);
 }
 
-RowGroup::RowGroup(const RowGroup& other263) {
-  columns = other263.columns;
-  total_byte_size = other263.total_byte_size;
-  num_rows = other263.num_rows;
-  sorting_columns = other263.sorting_columns;
-  file_offset = other263.file_offset;
-  total_compressed_size = other263.total_compressed_size;
-  ordinal = other263.ordinal;
-  __isset = other263.__isset;
+RowGroup::RowGroup(const RowGroup& other273) {
+  columns = other273.columns;
+  total_byte_size = other273.total_byte_size;
+  num_rows = other273.num_rows;
+  sorting_columns = other273.sorting_columns;
+  file_offset = other273.file_offset;
+  total_compressed_size = other273.total_compressed_size;
+  ordinal = other273.ordinal;
+  __isset = other273.__isset;
 }
-RowGroup::RowGroup(RowGroup&& other264) noexcept {
-  columns = std::move(other264.columns);
-  total_byte_size = other264.total_byte_size;
-  num_rows = other264.num_rows;
-  sorting_columns = std::move(other264.sorting_columns);
-  file_offset = other264.file_offset;
-  total_compressed_size = other264.total_compressed_size;
-  ordinal = other264.ordinal;
-  __isset = other264.__isset;
+RowGroup::RowGroup(RowGroup&& other274) noexcept {
+  columns = std::move(other274.columns);
+  total_byte_size = other274.total_byte_size;
+  num_rows = other274.num_rows;
+  sorting_columns = std::move(other274.sorting_columns);
+  file_offset = other274.file_offset;
+  total_compressed_size = other274.total_compressed_size;
+  ordinal = other274.ordinal;
+  __isset = other274.__isset;
 }
-RowGroup& RowGroup::operator=(const RowGroup& other265) {
-  columns = other265.columns;
-  total_byte_size = other265.total_byte_size;
-  num_rows = other265.num_rows;
-  sorting_columns = other265.sorting_columns;
-  file_offset = other265.file_offset;
-  total_compressed_size = other265.total_compressed_size;
-  ordinal = other265.ordinal;
-  __isset = other265.__isset;
+RowGroup& RowGroup::operator=(const RowGroup& other275) {
+  columns = other275.columns;
+  total_byte_size = other275.total_byte_size;
+  num_rows = other275.num_rows;
+  sorting_columns = other275.sorting_columns;
+  file_offset = other275.file_offset;
+  total_compressed_size = other275.total_compressed_size;
+  ordinal = other275.ordinal;
+  __isset = other275.__isset;
   return *this;
 }
-RowGroup& RowGroup::operator=(RowGroup&& other266) noexcept {
-  columns = std::move(other266.columns);
-  total_byte_size = other266.total_byte_size;
-  num_rows = other266.num_rows;
-  sorting_columns = std::move(other266.sorting_columns);
-  file_offset = other266.file_offset;
-  total_compressed_size = other266.total_compressed_size;
-  ordinal = other266.ordinal;
-  __isset = other266.__isset;
+RowGroup& RowGroup::operator=(RowGroup&& other276) noexcept {
+  columns = std::move(other276.columns);
+  total_byte_size = other276.total_byte_size;
+  num_rows = other276.num_rows;
+  sorting_columns = std::move(other276.sorting_columns);
+  file_offset = other276.file_offset;
+  total_compressed_size = other276.total_compressed_size;
+  ordinal = other276.ordinal;
+  __isset = other276.__isset;
   return *this;
 }
 void RowGroup::printTo(std::ostream& out) const {
@@ -8219,18 +8420,18 @@ void swap(TypeDefinedOrder &a, TypeDefinedOrder &b) {
   (void) b;
 }
 
-TypeDefinedOrder::TypeDefinedOrder(const TypeDefinedOrder& other267) noexcept {
-  (void) other267;
+TypeDefinedOrder::TypeDefinedOrder(const TypeDefinedOrder& other277) noexcept {
+  (void) other277;
 }
-TypeDefinedOrder::TypeDefinedOrder(TypeDefinedOrder&& other268) noexcept {
-  (void) other268;
+TypeDefinedOrder::TypeDefinedOrder(TypeDefinedOrder&& other278) noexcept {
+  (void) other278;
 }
-TypeDefinedOrder& TypeDefinedOrder::operator=(const TypeDefinedOrder& other269) noexcept {
-  (void) other269;
+TypeDefinedOrder& TypeDefinedOrder::operator=(const TypeDefinedOrder& other279) noexcept {
+  (void) other279;
   return *this;
 }
-TypeDefinedOrder& TypeDefinedOrder::operator=(TypeDefinedOrder&& other270) noexcept {
-  (void) other270;
+TypeDefinedOrder& TypeDefinedOrder::operator=(TypeDefinedOrder&& other280) noexcept {
+  (void) other280;
   return *this;
 }
 void TypeDefinedOrder::printTo(std::ostream& out) const {
@@ -8319,22 +8520,22 @@ void swap(ColumnOrder &a, ColumnOrder &b) {
   swap(a.__isset, b.__isset);
 }
 
-ColumnOrder::ColumnOrder(const ColumnOrder& other271) noexcept {
-  TYPE_ORDER = other271.TYPE_ORDER;
-  __isset = other271.__isset;
+ColumnOrder::ColumnOrder(const ColumnOrder& other281) noexcept {
+  TYPE_ORDER = other281.TYPE_ORDER;
+  __isset = other281.__isset;
 }
-ColumnOrder::ColumnOrder(ColumnOrder&& other272) noexcept {
-  TYPE_ORDER = std::move(other272.TYPE_ORDER);
-  __isset = other272.__isset;
+ColumnOrder::ColumnOrder(ColumnOrder&& other282) noexcept {
+  TYPE_ORDER = std::move(other282.TYPE_ORDER);
+  __isset = other282.__isset;
 }
-ColumnOrder& ColumnOrder::operator=(const ColumnOrder& other273) noexcept {
-  TYPE_ORDER = other273.TYPE_ORDER;
-  __isset = other273.__isset;
+ColumnOrder& ColumnOrder::operator=(const ColumnOrder& other283) noexcept {
+  TYPE_ORDER = other283.TYPE_ORDER;
+  __isset = other283.__isset;
   return *this;
 }
-ColumnOrder& ColumnOrder::operator=(ColumnOrder&& other274) noexcept {
-  TYPE_ORDER = std::move(other274.TYPE_ORDER);
-  __isset = other274.__isset;
+ColumnOrder& ColumnOrder::operator=(ColumnOrder&& other284) noexcept {
+  TYPE_ORDER = std::move(other284.TYPE_ORDER);
+  __isset = other284.__isset;
   return *this;
 }
 void ColumnOrder::printTo(std::ostream& out) const {
@@ -8467,26 +8668,26 @@ void swap(PageLocation &a, PageLocation &b) {
   swap(a.first_row_index, b.first_row_index);
 }
 
-PageLocation::PageLocation(const PageLocation& other275) noexcept {
-  offset = other275.offset;
-  compressed_page_size = other275.compressed_page_size;
-  first_row_index = other275.first_row_index;
+PageLocation::PageLocation(const PageLocation& other285) noexcept {
+  offset = other285.offset;
+  compressed_page_size = other285.compressed_page_size;
+  first_row_index = other285.first_row_index;
 }
-PageLocation::PageLocation(PageLocation&& other276) noexcept {
-  offset = other276.offset;
-  compressed_page_size = other276.compressed_page_size;
-  first_row_index = other276.first_row_index;
+PageLocation::PageLocation(PageLocation&& other286) noexcept {
+  offset = other286.offset;
+  compressed_page_size = other286.compressed_page_size;
+  first_row_index = other286.first_row_index;
 }
-PageLocation& PageLocation::operator=(const PageLocation& other277) noexcept {
-  offset = other277.offset;
-  compressed_page_size = other277.compressed_page_size;
-  first_row_index = other277.first_row_index;
+PageLocation& PageLocation::operator=(const PageLocation& other287) noexcept {
+  offset = other287.offset;
+  compressed_page_size = other287.compressed_page_size;
+  first_row_index = other287.first_row_index;
   return *this;
 }
-PageLocation& PageLocation::operator=(PageLocation&& other278) noexcept {
-  offset = other278.offset;
-  compressed_page_size = other278.compressed_page_size;
-  first_row_index = other278.first_row_index;
+PageLocation& PageLocation::operator=(PageLocation&& other288) noexcept {
+  offset = other288.offset;
+  compressed_page_size = other288.compressed_page_size;
+  first_row_index = other288.first_row_index;
   return *this;
 }
 void PageLocation::printTo(std::ostream& out) const {
@@ -8546,14 +8747,14 @@ uint32_t OffsetIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->page_locations.clear();
-            uint32_t _size279;
-            ::apache::thrift::protocol::TType _etype282;
-            xfer += iprot->readListBegin(_etype282, _size279);
-            this->page_locations.resize(_size279);
-            uint32_t _i283;
-            for (_i283 = 0; _i283 < _size279; ++_i283)
+            uint32_t _size289;
+            ::apache::thrift::protocol::TType _etype292;
+            xfer += iprot->readListBegin(_etype292, _size289);
+            this->page_locations.resize(_size289);
+            uint32_t _i293;
+            for (_i293 = 0; _i293 < _size289; ++_i293)
             {
-              xfer += this->page_locations[_i283].read(iprot);
+              xfer += this->page_locations[_i293].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -8566,14 +8767,14 @@ uint32_t OffsetIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->unencoded_byte_array_data_bytes.clear();
-            uint32_t _size284;
-            ::apache::thrift::protocol::TType _etype287;
-            xfer += iprot->readListBegin(_etype287, _size284);
-            this->unencoded_byte_array_data_bytes.resize(_size284);
-            uint32_t _i288;
-            for (_i288 = 0; _i288 < _size284; ++_i288)
+            uint32_t _size294;
+            ::apache::thrift::protocol::TType _etype297;
+            xfer += iprot->readListBegin(_etype297, _size294);
+            this->unencoded_byte_array_data_bytes.resize(_size294);
+            uint32_t _i298;
+            for (_i298 = 0; _i298 < _size294; ++_i298)
             {
-              xfer += iprot->readI64(this->unencoded_byte_array_data_bytes[_i288]);
+              xfer += iprot->readI64(this->unencoded_byte_array_data_bytes[_i298]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8604,10 +8805,10 @@ uint32_t OffsetIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
   xfer += oprot->writeFieldBegin("page_locations", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->page_locations.size()));
-    duckdb::vector<PageLocation> ::const_iterator _iter289;
-    for (_iter289 = this->page_locations.begin(); _iter289 != this->page_locations.end(); ++_iter289)
+    duckdb::vector<PageLocation> ::const_iterator _iter299;
+    for (_iter299 = this->page_locations.begin(); _iter299 != this->page_locations.end(); ++_iter299)
     {
-      xfer += (*_iter289).write(oprot);
+      xfer += (*_iter299).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -8617,10 +8818,10 @@ uint32_t OffsetIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
     xfer += oprot->writeFieldBegin("unencoded_byte_array_data_bytes", ::apache::thrift::protocol::T_LIST, 2);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->unencoded_byte_array_data_bytes.size()));
-      duckdb::vector<int64_t> ::const_iterator _iter290;
-      for (_iter290 = this->unencoded_byte_array_data_bytes.begin(); _iter290 != this->unencoded_byte_array_data_bytes.end(); ++_iter290)
+      duckdb::vector<int64_t> ::const_iterator _iter300;
+      for (_iter300 = this->unencoded_byte_array_data_bytes.begin(); _iter300 != this->unencoded_byte_array_data_bytes.end(); ++_iter300)
       {
-        xfer += oprot->writeI64((*_iter290));
+        xfer += oprot->writeI64((*_iter300));
       }
       xfer += oprot->writeListEnd();
     }
@@ -8638,26 +8839,26 @@ void swap(OffsetIndex &a, OffsetIndex &b) {
   swap(a.__isset, b.__isset);
 }
 
-OffsetIndex::OffsetIndex(const OffsetIndex& other291) {
-  page_locations = other291.page_locations;
-  unencoded_byte_array_data_bytes = other291.unencoded_byte_array_data_bytes;
-  __isset = other291.__isset;
+OffsetIndex::OffsetIndex(const OffsetIndex& other301) {
+  page_locations = other301.page_locations;
+  unencoded_byte_array_data_bytes = other301.unencoded_byte_array_data_bytes;
+  __isset = other301.__isset;
 }
-OffsetIndex::OffsetIndex(OffsetIndex&& other292) noexcept {
-  page_locations = std::move(other292.page_locations);
-  unencoded_byte_array_data_bytes = std::move(other292.unencoded_byte_array_data_bytes);
-  __isset = other292.__isset;
+OffsetIndex::OffsetIndex(OffsetIndex&& other302) noexcept {
+  page_locations = std::move(other302.page_locations);
+  unencoded_byte_array_data_bytes = std::move(other302.unencoded_byte_array_data_bytes);
+  __isset = other302.__isset;
 }
-OffsetIndex& OffsetIndex::operator=(const OffsetIndex& other293) {
-  page_locations = other293.page_locations;
-  unencoded_byte_array_data_bytes = other293.unencoded_byte_array_data_bytes;
-  __isset = other293.__isset;
+OffsetIndex& OffsetIndex::operator=(const OffsetIndex& other303) {
+  page_locations = other303.page_locations;
+  unencoded_byte_array_data_bytes = other303.unencoded_byte_array_data_bytes;
+  __isset = other303.__isset;
   return *this;
 }
-OffsetIndex& OffsetIndex::operator=(OffsetIndex&& other294) noexcept {
-  page_locations = std::move(other294.page_locations);
-  unencoded_byte_array_data_bytes = std::move(other294.unencoded_byte_array_data_bytes);
-  __isset = other294.__isset;
+OffsetIndex& OffsetIndex::operator=(OffsetIndex&& other304) noexcept {
+  page_locations = std::move(other304.page_locations);
+  unencoded_byte_array_data_bytes = std::move(other304.unencoded_byte_array_data_bytes);
+  __isset = other304.__isset;
   return *this;
 }
 void OffsetIndex::printTo(std::ostream& out) const {
@@ -8742,14 +8943,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->null_pages.clear();
-            uint32_t _size295;
-            ::apache::thrift::protocol::TType _etype298;
-            xfer += iprot->readListBegin(_etype298, _size295);
-            this->null_pages.resize(_size295);
-            uint32_t _i299;
-            for (_i299 = 0; _i299 < _size295; ++_i299)
+            uint32_t _size305;
+            ::apache::thrift::protocol::TType _etype308;
+            xfer += iprot->readListBegin(_etype308, _size305);
+            this->null_pages.resize(_size305);
+            uint32_t _i309;
+            for (_i309 = 0; _i309 < _size305; ++_i309)
             {
-              xfer += iprot->readBool(this->null_pages[_i299]);
+              xfer += iprot->readBool(this->null_pages[_i309]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8762,14 +8963,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->min_values.clear();
-            uint32_t _size300;
-            ::apache::thrift::protocol::TType _etype303;
-            xfer += iprot->readListBegin(_etype303, _size300);
-            this->min_values.resize(_size300);
-            uint32_t _i304;
-            for (_i304 = 0; _i304 < _size300; ++_i304)
+            uint32_t _size310;
+            ::apache::thrift::protocol::TType _etype313;
+            xfer += iprot->readListBegin(_etype313, _size310);
+            this->min_values.resize(_size310);
+            uint32_t _i314;
+            for (_i314 = 0; _i314 < _size310; ++_i314)
             {
-              xfer += iprot->readBinary(this->min_values[_i304]);
+              xfer += iprot->readBinary(this->min_values[_i314]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8782,14 +8983,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->max_values.clear();
-            uint32_t _size305;
-            ::apache::thrift::protocol::TType _etype308;
-            xfer += iprot->readListBegin(_etype308, _size305);
-            this->max_values.resize(_size305);
-            uint32_t _i309;
-            for (_i309 = 0; _i309 < _size305; ++_i309)
+            uint32_t _size315;
+            ::apache::thrift::protocol::TType _etype318;
+            xfer += iprot->readListBegin(_etype318, _size315);
+            this->max_values.resize(_size315);
+            uint32_t _i319;
+            for (_i319 = 0; _i319 < _size315; ++_i319)
             {
-              xfer += iprot->readBinary(this->max_values[_i309]);
+              xfer += iprot->readBinary(this->max_values[_i319]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8800,9 +9001,9 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         break;
       case 4:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t ecast310;
-          xfer += iprot->readI32(ecast310);
-          this->boundary_order = SafeEnumCast<BoundaryOrder>(_BoundaryOrder_VALUES_TO_NAMES, ecast310);
+          int32_t ecast320;
+          xfer += iprot->readI32(ecast320);
+          this->boundary_order = SafeEnumCast<BoundaryOrder>(_BoundaryOrder_VALUES_TO_NAMES, ecast320);
           isset_boundary_order = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -8812,14 +9013,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->null_counts.clear();
-            uint32_t _size311;
-            ::apache::thrift::protocol::TType _etype314;
-            xfer += iprot->readListBegin(_etype314, _size311);
-            this->null_counts.resize(_size311);
-            uint32_t _i315;
-            for (_i315 = 0; _i315 < _size311; ++_i315)
+            uint32_t _size321;
+            ::apache::thrift::protocol::TType _etype324;
+            xfer += iprot->readListBegin(_etype324, _size321);
+            this->null_counts.resize(_size321);
+            uint32_t _i325;
+            for (_i325 = 0; _i325 < _size321; ++_i325)
             {
-              xfer += iprot->readI64(this->null_counts[_i315]);
+              xfer += iprot->readI64(this->null_counts[_i325]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8832,14 +9033,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->repetition_level_histograms.clear();
-            uint32_t _size316;
-            ::apache::thrift::protocol::TType _etype319;
-            xfer += iprot->readListBegin(_etype319, _size316);
-            this->repetition_level_histograms.resize(_size316);
-            uint32_t _i320;
-            for (_i320 = 0; _i320 < _size316; ++_i320)
+            uint32_t _size326;
+            ::apache::thrift::protocol::TType _etype329;
+            xfer += iprot->readListBegin(_etype329, _size326);
+            this->repetition_level_histograms.resize(_size326);
+            uint32_t _i330;
+            for (_i330 = 0; _i330 < _size326; ++_i330)
             {
-              xfer += iprot->readI64(this->repetition_level_histograms[_i320]);
+              xfer += iprot->readI64(this->repetition_level_histograms[_i330]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8852,14 +9053,14 @@ uint32_t ColumnIndex::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->definition_level_histograms.clear();
-            uint32_t _size321;
-            ::apache::thrift::protocol::TType _etype324;
-            xfer += iprot->readListBegin(_etype324, _size321);
-            this->definition_level_histograms.resize(_size321);
-            uint32_t _i325;
-            for (_i325 = 0; _i325 < _size321; ++_i325)
+            uint32_t _size331;
+            ::apache::thrift::protocol::TType _etype334;
+            xfer += iprot->readListBegin(_etype334, _size331);
+            this->definition_level_histograms.resize(_size331);
+            uint32_t _i335;
+            for (_i335 = 0; _i335 < _size331; ++_i335)
             {
-              xfer += iprot->readI64(this->definition_level_histograms[_i325]);
+              xfer += iprot->readI64(this->definition_level_histograms[_i335]);
             }
             xfer += iprot->readListEnd();
           }
@@ -8896,10 +9097,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
   xfer += oprot->writeFieldBegin("null_pages", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BOOL, static_cast<uint32_t>(this->null_pages.size()));
-    duckdb::vector<bool> ::const_iterator _iter326;
-    for (_iter326 = this->null_pages.begin(); _iter326 != this->null_pages.end(); ++_iter326)
+    duckdb::vector<bool> ::const_iterator _iter336;
+    for (_iter336 = this->null_pages.begin(); _iter336 != this->null_pages.end(); ++_iter336)
     {
-      xfer += oprot->writeBool((*_iter326));
+      xfer += oprot->writeBool((*_iter336));
     }
     xfer += oprot->writeListEnd();
   }
@@ -8908,10 +9109,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
   xfer += oprot->writeFieldBegin("min_values", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->min_values.size()));
-    duckdb::vector<std::string> ::const_iterator _iter327;
-    for (_iter327 = this->min_values.begin(); _iter327 != this->min_values.end(); ++_iter327)
+    duckdb::vector<std::string> ::const_iterator _iter337;
+    for (_iter337 = this->min_values.begin(); _iter337 != this->min_values.end(); ++_iter337)
     {
-      xfer += oprot->writeBinary((*_iter327));
+      xfer += oprot->writeBinary((*_iter337));
     }
     xfer += oprot->writeListEnd();
   }
@@ -8920,10 +9121,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
   xfer += oprot->writeFieldBegin("max_values", ::apache::thrift::protocol::T_LIST, 3);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->max_values.size()));
-    duckdb::vector<std::string> ::const_iterator _iter328;
-    for (_iter328 = this->max_values.begin(); _iter328 != this->max_values.end(); ++_iter328)
+    duckdb::vector<std::string> ::const_iterator _iter338;
+    for (_iter338 = this->max_values.begin(); _iter338 != this->max_values.end(); ++_iter338)
     {
-      xfer += oprot->writeBinary((*_iter328));
+      xfer += oprot->writeBinary((*_iter338));
     }
     xfer += oprot->writeListEnd();
   }
@@ -8937,10 +9138,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
     xfer += oprot->writeFieldBegin("null_counts", ::apache::thrift::protocol::T_LIST, 5);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->null_counts.size()));
-      duckdb::vector<int64_t> ::const_iterator _iter329;
-      for (_iter329 = this->null_counts.begin(); _iter329 != this->null_counts.end(); ++_iter329)
+      duckdb::vector<int64_t> ::const_iterator _iter339;
+      for (_iter339 = this->null_counts.begin(); _iter339 != this->null_counts.end(); ++_iter339)
       {
-        xfer += oprot->writeI64((*_iter329));
+        xfer += oprot->writeI64((*_iter339));
       }
       xfer += oprot->writeListEnd();
     }
@@ -8950,10 +9151,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
     xfer += oprot->writeFieldBegin("repetition_level_histograms", ::apache::thrift::protocol::T_LIST, 6);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->repetition_level_histograms.size()));
-      duckdb::vector<int64_t> ::const_iterator _iter330;
-      for (_iter330 = this->repetition_level_histograms.begin(); _iter330 != this->repetition_level_histograms.end(); ++_iter330)
+      duckdb::vector<int64_t> ::const_iterator _iter340;
+      for (_iter340 = this->repetition_level_histograms.begin(); _iter340 != this->repetition_level_histograms.end(); ++_iter340)
       {
-        xfer += oprot->writeI64((*_iter330));
+        xfer += oprot->writeI64((*_iter340));
       }
       xfer += oprot->writeListEnd();
     }
@@ -8963,10 +9164,10 @@ uint32_t ColumnIndex::write(::apache::thrift::protocol::TProtocol* oprot) const 
     xfer += oprot->writeFieldBegin("definition_level_histograms", ::apache::thrift::protocol::T_LIST, 7);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->definition_level_histograms.size()));
-      duckdb::vector<int64_t> ::const_iterator _iter331;
-      for (_iter331 = this->definition_level_histograms.begin(); _iter331 != this->definition_level_histograms.end(); ++_iter331)
+      duckdb::vector<int64_t> ::const_iterator _iter341;
+      for (_iter341 = this->definition_level_histograms.begin(); _iter341 != this->definition_level_histograms.end(); ++_iter341)
       {
-        xfer += oprot->writeI64((*_iter331));
+        xfer += oprot->writeI64((*_iter341));
       }
       xfer += oprot->writeListEnd();
     }
@@ -8989,46 +9190,46 @@ void swap(ColumnIndex &a, ColumnIndex &b) {
   swap(a.__isset, b.__isset);
 }
 
-ColumnIndex::ColumnIndex(const ColumnIndex& other332) {
-  null_pages = other332.null_pages;
-  min_values = other332.min_values;
-  max_values = other332.max_values;
-  boundary_order = other332.boundary_order;
-  null_counts = other332.null_counts;
-  repetition_level_histograms = other332.repetition_level_histograms;
-  definition_level_histograms = other332.definition_level_histograms;
-  __isset = other332.__isset;
+ColumnIndex::ColumnIndex(const ColumnIndex& other342) {
+  null_pages = other342.null_pages;
+  min_values = other342.min_values;
+  max_values = other342.max_values;
+  boundary_order = other342.boundary_order;
+  null_counts = other342.null_counts;
+  repetition_level_histograms = other342.repetition_level_histograms;
+  definition_level_histograms = other342.definition_level_histograms;
+  __isset = other342.__isset;
 }
-ColumnIndex::ColumnIndex(ColumnIndex&& other333) noexcept {
-  null_pages = std::move(other333.null_pages);
-  min_values = std::move(other333.min_values);
-  max_values = std::move(other333.max_values);
-  boundary_order = other333.boundary_order;
-  null_counts = std::move(other333.null_counts);
-  repetition_level_histograms = std::move(other333.repetition_level_histograms);
-  definition_level_histograms = std::move(other333.definition_level_histograms);
-  __isset = other333.__isset;
+ColumnIndex::ColumnIndex(ColumnIndex&& other343) noexcept {
+  null_pages = std::move(other343.null_pages);
+  min_values = std::move(other343.min_values);
+  max_values = std::move(other343.max_values);
+  boundary_order = other343.boundary_order;
+  null_counts = std::move(other343.null_counts);
+  repetition_level_histograms = std::move(other343.repetition_level_histograms);
+  definition_level_histograms = std::move(other343.definition_level_histograms);
+  __isset = other343.__isset;
 }
-ColumnIndex& ColumnIndex::operator=(const ColumnIndex& other334) {
-  null_pages = other334.null_pages;
-  min_values = other334.min_values;
-  max_values = other334.max_values;
-  boundary_order = other334.boundary_order;
-  null_counts = other334.null_counts;
-  repetition_level_histograms = other334.repetition_level_histograms;
-  definition_level_histograms = other334.definition_level_histograms;
-  __isset = other334.__isset;
+ColumnIndex& ColumnIndex::operator=(const ColumnIndex& other344) {
+  null_pages = other344.null_pages;
+  min_values = other344.min_values;
+  max_values = other344.max_values;
+  boundary_order = other344.boundary_order;
+  null_counts = other344.null_counts;
+  repetition_level_histograms = other344.repetition_level_histograms;
+  definition_level_histograms = other344.definition_level_histograms;
+  __isset = other344.__isset;
   return *this;
 }
-ColumnIndex& ColumnIndex::operator=(ColumnIndex&& other335) noexcept {
-  null_pages = std::move(other335.null_pages);
-  min_values = std::move(other335.min_values);
-  max_values = std::move(other335.max_values);
-  boundary_order = other335.boundary_order;
-  null_counts = std::move(other335.null_counts);
-  repetition_level_histograms = std::move(other335.repetition_level_histograms);
-  definition_level_histograms = std::move(other335.definition_level_histograms);
-  __isset = other335.__isset;
+ColumnIndex& ColumnIndex::operator=(ColumnIndex&& other345) noexcept {
+  null_pages = std::move(other345.null_pages);
+  min_values = std::move(other345.min_values);
+  max_values = std::move(other345.max_values);
+  boundary_order = other345.boundary_order;
+  null_counts = std::move(other345.null_counts);
+  repetition_level_histograms = std::move(other345.repetition_level_histograms);
+  definition_level_histograms = std::move(other345.definition_level_histograms);
+  __isset = other345.__isset;
   return *this;
 }
 void ColumnIndex::printTo(std::ostream& out) const {
@@ -9165,30 +9366,30 @@ void swap(AesGcmV1 &a, AesGcmV1 &b) {
   swap(a.__isset, b.__isset);
 }
 
-AesGcmV1::AesGcmV1(const AesGcmV1& other336) {
-  aad_prefix = other336.aad_prefix;
-  aad_file_unique = other336.aad_file_unique;
-  supply_aad_prefix = other336.supply_aad_prefix;
-  __isset = other336.__isset;
+AesGcmV1::AesGcmV1(const AesGcmV1& other346) {
+  aad_prefix = other346.aad_prefix;
+  aad_file_unique = other346.aad_file_unique;
+  supply_aad_prefix = other346.supply_aad_prefix;
+  __isset = other346.__isset;
 }
-AesGcmV1::AesGcmV1(AesGcmV1&& other337) noexcept {
-  aad_prefix = std::move(other337.aad_prefix);
-  aad_file_unique = std::move(other337.aad_file_unique);
-  supply_aad_prefix = other337.supply_aad_prefix;
-  __isset = other337.__isset;
+AesGcmV1::AesGcmV1(AesGcmV1&& other347) noexcept {
+  aad_prefix = std::move(other347.aad_prefix);
+  aad_file_unique = std::move(other347.aad_file_unique);
+  supply_aad_prefix = other347.supply_aad_prefix;
+  __isset = other347.__isset;
 }
-AesGcmV1& AesGcmV1::operator=(const AesGcmV1& other338) {
-  aad_prefix = other338.aad_prefix;
-  aad_file_unique = other338.aad_file_unique;
-  supply_aad_prefix = other338.supply_aad_prefix;
-  __isset = other338.__isset;
+AesGcmV1& AesGcmV1::operator=(const AesGcmV1& other348) {
+  aad_prefix = other348.aad_prefix;
+  aad_file_unique = other348.aad_file_unique;
+  supply_aad_prefix = other348.supply_aad_prefix;
+  __isset = other348.__isset;
   return *this;
 }
-AesGcmV1& AesGcmV1::operator=(AesGcmV1&& other339) noexcept {
-  aad_prefix = std::move(other339.aad_prefix);
-  aad_file_unique = std::move(other339.aad_file_unique);
-  supply_aad_prefix = other339.supply_aad_prefix;
-  __isset = other339.__isset;
+AesGcmV1& AesGcmV1::operator=(AesGcmV1&& other349) noexcept {
+  aad_prefix = std::move(other349.aad_prefix);
+  aad_file_unique = std::move(other349.aad_file_unique);
+  supply_aad_prefix = other349.supply_aad_prefix;
+  __isset = other349.__isset;
   return *this;
 }
 void AesGcmV1::printTo(std::ostream& out) const {
@@ -9321,30 +9522,30 @@ void swap(AesGcmCtrV1 &a, AesGcmCtrV1 &b) {
   swap(a.__isset, b.__isset);
 }
 
-AesGcmCtrV1::AesGcmCtrV1(const AesGcmCtrV1& other340) {
-  aad_prefix = other340.aad_prefix;
-  aad_file_unique = other340.aad_file_unique;
-  supply_aad_prefix = other340.supply_aad_prefix;
-  __isset = other340.__isset;
+AesGcmCtrV1::AesGcmCtrV1(const AesGcmCtrV1& other350) {
+  aad_prefix = other350.aad_prefix;
+  aad_file_unique = other350.aad_file_unique;
+  supply_aad_prefix = other350.supply_aad_prefix;
+  __isset = other350.__isset;
 }
-AesGcmCtrV1::AesGcmCtrV1(AesGcmCtrV1&& other341) noexcept {
-  aad_prefix = std::move(other341.aad_prefix);
-  aad_file_unique = std::move(other341.aad_file_unique);
-  supply_aad_prefix = other341.supply_aad_prefix;
-  __isset = other341.__isset;
+AesGcmCtrV1::AesGcmCtrV1(AesGcmCtrV1&& other351) noexcept {
+  aad_prefix = std::move(other351.aad_prefix);
+  aad_file_unique = std::move(other351.aad_file_unique);
+  supply_aad_prefix = other351.supply_aad_prefix;
+  __isset = other351.__isset;
 }
-AesGcmCtrV1& AesGcmCtrV1::operator=(const AesGcmCtrV1& other342) {
-  aad_prefix = other342.aad_prefix;
-  aad_file_unique = other342.aad_file_unique;
-  supply_aad_prefix = other342.supply_aad_prefix;
-  __isset = other342.__isset;
+AesGcmCtrV1& AesGcmCtrV1::operator=(const AesGcmCtrV1& other352) {
+  aad_prefix = other352.aad_prefix;
+  aad_file_unique = other352.aad_file_unique;
+  supply_aad_prefix = other352.supply_aad_prefix;
+  __isset = other352.__isset;
   return *this;
 }
-AesGcmCtrV1& AesGcmCtrV1::operator=(AesGcmCtrV1&& other343) noexcept {
-  aad_prefix = std::move(other343.aad_prefix);
-  aad_file_unique = std::move(other343.aad_file_unique);
-  supply_aad_prefix = other343.supply_aad_prefix;
-  __isset = other343.__isset;
+AesGcmCtrV1& AesGcmCtrV1::operator=(AesGcmCtrV1&& other353) noexcept {
+  aad_prefix = std::move(other353.aad_prefix);
+  aad_file_unique = std::move(other353.aad_file_unique);
+  supply_aad_prefix = other353.supply_aad_prefix;
+  __isset = other353.__isset;
   return *this;
 }
 void AesGcmCtrV1::printTo(std::ostream& out) const {
@@ -9455,26 +9656,26 @@ void swap(EncryptionAlgorithm &a, EncryptionAlgorithm &b) {
   swap(a.__isset, b.__isset);
 }
 
-EncryptionAlgorithm::EncryptionAlgorithm(const EncryptionAlgorithm& other344) {
-  AES_GCM_V1 = other344.AES_GCM_V1;
-  AES_GCM_CTR_V1 = other344.AES_GCM_CTR_V1;
-  __isset = other344.__isset;
+EncryptionAlgorithm::EncryptionAlgorithm(const EncryptionAlgorithm& other354) {
+  AES_GCM_V1 = other354.AES_GCM_V1;
+  AES_GCM_CTR_V1 = other354.AES_GCM_CTR_V1;
+  __isset = other354.__isset;
 }
-EncryptionAlgorithm::EncryptionAlgorithm(EncryptionAlgorithm&& other345) noexcept {
-  AES_GCM_V1 = std::move(other345.AES_GCM_V1);
-  AES_GCM_CTR_V1 = std::move(other345.AES_GCM_CTR_V1);
-  __isset = other345.__isset;
+EncryptionAlgorithm::EncryptionAlgorithm(EncryptionAlgorithm&& other355) noexcept {
+  AES_GCM_V1 = std::move(other355.AES_GCM_V1);
+  AES_GCM_CTR_V1 = std::move(other355.AES_GCM_CTR_V1);
+  __isset = other355.__isset;
 }
-EncryptionAlgorithm& EncryptionAlgorithm::operator=(const EncryptionAlgorithm& other346) {
-  AES_GCM_V1 = other346.AES_GCM_V1;
-  AES_GCM_CTR_V1 = other346.AES_GCM_CTR_V1;
-  __isset = other346.__isset;
+EncryptionAlgorithm& EncryptionAlgorithm::operator=(const EncryptionAlgorithm& other356) {
+  AES_GCM_V1 = other356.AES_GCM_V1;
+  AES_GCM_CTR_V1 = other356.AES_GCM_CTR_V1;
+  __isset = other356.__isset;
   return *this;
 }
-EncryptionAlgorithm& EncryptionAlgorithm::operator=(EncryptionAlgorithm&& other347) noexcept {
-  AES_GCM_V1 = std::move(other347.AES_GCM_V1);
-  AES_GCM_CTR_V1 = std::move(other347.AES_GCM_CTR_V1);
-  __isset = other347.__isset;
+EncryptionAlgorithm& EncryptionAlgorithm::operator=(EncryptionAlgorithm&& other357) noexcept {
+  AES_GCM_V1 = std::move(other357.AES_GCM_V1);
+  AES_GCM_CTR_V1 = std::move(other357.AES_GCM_CTR_V1);
+  __isset = other357.__isset;
   return *this;
 }
 void EncryptionAlgorithm::printTo(std::ostream& out) const {
@@ -9580,14 +9781,14 @@ uint32_t FileMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->schema.clear();
-            uint32_t _size348;
-            ::apache::thrift::protocol::TType _etype351;
-            xfer += iprot->readListBegin(_etype351, _size348);
-            this->schema.resize(_size348);
-            uint32_t _i352;
-            for (_i352 = 0; _i352 < _size348; ++_i352)
+            uint32_t _size358;
+            ::apache::thrift::protocol::TType _etype361;
+            xfer += iprot->readListBegin(_etype361, _size358);
+            this->schema.resize(_size358);
+            uint32_t _i362;
+            for (_i362 = 0; _i362 < _size358; ++_i362)
             {
-              xfer += this->schema[_i352].read(iprot);
+              xfer += this->schema[_i362].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -9608,14 +9809,14 @@ uint32_t FileMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->row_groups.clear();
-            uint32_t _size353;
-            ::apache::thrift::protocol::TType _etype356;
-            xfer += iprot->readListBegin(_etype356, _size353);
-            this->row_groups.resize(_size353);
-            uint32_t _i357;
-            for (_i357 = 0; _i357 < _size353; ++_i357)
+            uint32_t _size363;
+            ::apache::thrift::protocol::TType _etype366;
+            xfer += iprot->readListBegin(_etype366, _size363);
+            this->row_groups.resize(_size363);
+            uint32_t _i367;
+            for (_i367 = 0; _i367 < _size363; ++_i367)
             {
-              xfer += this->row_groups[_i357].read(iprot);
+              xfer += this->row_groups[_i367].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -9628,14 +9829,14 @@ uint32_t FileMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->key_value_metadata.clear();
-            uint32_t _size358;
-            ::apache::thrift::protocol::TType _etype361;
-            xfer += iprot->readListBegin(_etype361, _size358);
-            this->key_value_metadata.resize(_size358);
-            uint32_t _i362;
-            for (_i362 = 0; _i362 < _size358; ++_i362)
+            uint32_t _size368;
+            ::apache::thrift::protocol::TType _etype371;
+            xfer += iprot->readListBegin(_etype371, _size368);
+            this->key_value_metadata.resize(_size368);
+            uint32_t _i372;
+            for (_i372 = 0; _i372 < _size368; ++_i372)
             {
-              xfer += this->key_value_metadata[_i362].read(iprot);
+              xfer += this->key_value_metadata[_i372].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -9656,14 +9857,14 @@ uint32_t FileMetaData::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->column_orders.clear();
-            uint32_t _size363;
-            ::apache::thrift::protocol::TType _etype366;
-            xfer += iprot->readListBegin(_etype366, _size363);
-            this->column_orders.resize(_size363);
-            uint32_t _i367;
-            for (_i367 = 0; _i367 < _size363; ++_i367)
+            uint32_t _size373;
+            ::apache::thrift::protocol::TType _etype376;
+            xfer += iprot->readListBegin(_etype376, _size373);
+            this->column_orders.resize(_size373);
+            uint32_t _i377;
+            for (_i377 = 0; _i377 < _size373; ++_i377)
             {
-              xfer += this->column_orders[_i367].read(iprot);
+              xfer += this->column_orders[_i377].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -9720,10 +9921,10 @@ uint32_t FileMetaData::write(::apache::thrift::protocol::TProtocol* oprot) const
   xfer += oprot->writeFieldBegin("schema", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->schema.size()));
-    duckdb::vector<SchemaElement> ::const_iterator _iter368;
-    for (_iter368 = this->schema.begin(); _iter368 != this->schema.end(); ++_iter368)
+    duckdb::vector<SchemaElement> ::const_iterator _iter378;
+    for (_iter378 = this->schema.begin(); _iter378 != this->schema.end(); ++_iter378)
     {
-      xfer += (*_iter368).write(oprot);
+      xfer += (*_iter378).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -9736,10 +9937,10 @@ uint32_t FileMetaData::write(::apache::thrift::protocol::TProtocol* oprot) const
   xfer += oprot->writeFieldBegin("row_groups", ::apache::thrift::protocol::T_LIST, 4);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->row_groups.size()));
-    duckdb::vector<RowGroup> ::const_iterator _iter369;
-    for (_iter369 = this->row_groups.begin(); _iter369 != this->row_groups.end(); ++_iter369)
+    duckdb::vector<RowGroup> ::const_iterator _iter379;
+    for (_iter379 = this->row_groups.begin(); _iter379 != this->row_groups.end(); ++_iter379)
     {
-      xfer += (*_iter369).write(oprot);
+      xfer += (*_iter379).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -9749,10 +9950,10 @@ uint32_t FileMetaData::write(::apache::thrift::protocol::TProtocol* oprot) const
     xfer += oprot->writeFieldBegin("key_value_metadata", ::apache::thrift::protocol::T_LIST, 5);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->key_value_metadata.size()));
-      duckdb::vector<KeyValue> ::const_iterator _iter370;
-      for (_iter370 = this->key_value_metadata.begin(); _iter370 != this->key_value_metadata.end(); ++_iter370)
+      duckdb::vector<KeyValue> ::const_iterator _iter380;
+      for (_iter380 = this->key_value_metadata.begin(); _iter380 != this->key_value_metadata.end(); ++_iter380)
       {
-        xfer += (*_iter370).write(oprot);
+        xfer += (*_iter380).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -9767,10 +9968,10 @@ uint32_t FileMetaData::write(::apache::thrift::protocol::TProtocol* oprot) const
     xfer += oprot->writeFieldBegin("column_orders", ::apache::thrift::protocol::T_LIST, 7);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->column_orders.size()));
-      duckdb::vector<ColumnOrder> ::const_iterator _iter371;
-      for (_iter371 = this->column_orders.begin(); _iter371 != this->column_orders.end(); ++_iter371)
+      duckdb::vector<ColumnOrder> ::const_iterator _iter381;
+      for (_iter381 = this->column_orders.begin(); _iter381 != this->column_orders.end(); ++_iter381)
       {
-        xfer += (*_iter371).write(oprot);
+        xfer += (*_iter381).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -9805,54 +10006,54 @@ void swap(FileMetaData &a, FileMetaData &b) {
   swap(a.__isset, b.__isset);
 }
 
-FileMetaData::FileMetaData(const FileMetaData& other372) {
-  version = other372.version;
-  schema = other372.schema;
-  num_rows = other372.num_rows;
-  row_groups = other372.row_groups;
-  key_value_metadata = other372.key_value_metadata;
-  created_by = other372.created_by;
-  column_orders = other372.column_orders;
-  encryption_algorithm = other372.encryption_algorithm;
-  footer_signing_key_metadata = other372.footer_signing_key_metadata;
-  __isset = other372.__isset;
+FileMetaData::FileMetaData(const FileMetaData& other382) {
+  version = other382.version;
+  schema = other382.schema;
+  num_rows = other382.num_rows;
+  row_groups = other382.row_groups;
+  key_value_metadata = other382.key_value_metadata;
+  created_by = other382.created_by;
+  column_orders = other382.column_orders;
+  encryption_algorithm = other382.encryption_algorithm;
+  footer_signing_key_metadata = other382.footer_signing_key_metadata;
+  __isset = other382.__isset;
 }
-FileMetaData::FileMetaData(FileMetaData&& other373) noexcept {
-  version = other373.version;
-  schema = std::move(other373.schema);
-  num_rows = other373.num_rows;
-  row_groups = std::move(other373.row_groups);
-  key_value_metadata = std::move(other373.key_value_metadata);
-  created_by = std::move(other373.created_by);
-  column_orders = std::move(other373.column_orders);
-  encryption_algorithm = std::move(other373.encryption_algorithm);
-  footer_signing_key_metadata = std::move(other373.footer_signing_key_metadata);
-  __isset = other373.__isset;
+FileMetaData::FileMetaData(FileMetaData&& other383) noexcept {
+  version = other383.version;
+  schema = std::move(other383.schema);
+  num_rows = other383.num_rows;
+  row_groups = std::move(other383.row_groups);
+  key_value_metadata = std::move(other383.key_value_metadata);
+  created_by = std::move(other383.created_by);
+  column_orders = std::move(other383.column_orders);
+  encryption_algorithm = std::move(other383.encryption_algorithm);
+  footer_signing_key_metadata = std::move(other383.footer_signing_key_metadata);
+  __isset = other383.__isset;
 }
-FileMetaData& FileMetaData::operator=(const FileMetaData& other374) {
-  version = other374.version;
-  schema = other374.schema;
-  num_rows = other374.num_rows;
-  row_groups = other374.row_groups;
-  key_value_metadata = other374.key_value_metadata;
-  created_by = other374.created_by;
-  column_orders = other374.column_orders;
-  encryption_algorithm = other374.encryption_algorithm;
-  footer_signing_key_metadata = other374.footer_signing_key_metadata;
-  __isset = other374.__isset;
+FileMetaData& FileMetaData::operator=(const FileMetaData& other384) {
+  version = other384.version;
+  schema = other384.schema;
+  num_rows = other384.num_rows;
+  row_groups = other384.row_groups;
+  key_value_metadata = other384.key_value_metadata;
+  created_by = other384.created_by;
+  column_orders = other384.column_orders;
+  encryption_algorithm = other384.encryption_algorithm;
+  footer_signing_key_metadata = other384.footer_signing_key_metadata;
+  __isset = other384.__isset;
   return *this;
 }
-FileMetaData& FileMetaData::operator=(FileMetaData&& other375) noexcept {
-  version = other375.version;
-  schema = std::move(other375.schema);
-  num_rows = other375.num_rows;
-  row_groups = std::move(other375.row_groups);
-  key_value_metadata = std::move(other375.key_value_metadata);
-  created_by = std::move(other375.created_by);
-  column_orders = std::move(other375.column_orders);
-  encryption_algorithm = std::move(other375.encryption_algorithm);
-  footer_signing_key_metadata = std::move(other375.footer_signing_key_metadata);
-  __isset = other375.__isset;
+FileMetaData& FileMetaData::operator=(FileMetaData&& other385) noexcept {
+  version = other385.version;
+  schema = std::move(other385.schema);
+  num_rows = other385.num_rows;
+  row_groups = std::move(other385.row_groups);
+  key_value_metadata = std::move(other385.key_value_metadata);
+  created_by = std::move(other385.created_by);
+  column_orders = std::move(other385.column_orders);
+  encryption_algorithm = std::move(other385.encryption_algorithm);
+  footer_signing_key_metadata = std::move(other385.footer_signing_key_metadata);
+  __isset = other385.__isset;
   return *this;
 }
 void FileMetaData::printTo(std::ostream& out) const {
@@ -9971,26 +10172,26 @@ void swap(FileCryptoMetaData &a, FileCryptoMetaData &b) {
   swap(a.__isset, b.__isset);
 }
 
-FileCryptoMetaData::FileCryptoMetaData(const FileCryptoMetaData& other376) {
-  encryption_algorithm = other376.encryption_algorithm;
-  key_metadata = other376.key_metadata;
-  __isset = other376.__isset;
+FileCryptoMetaData::FileCryptoMetaData(const FileCryptoMetaData& other386) {
+  encryption_algorithm = other386.encryption_algorithm;
+  key_metadata = other386.key_metadata;
+  __isset = other386.__isset;
 }
-FileCryptoMetaData::FileCryptoMetaData(FileCryptoMetaData&& other377) noexcept {
-  encryption_algorithm = std::move(other377.encryption_algorithm);
-  key_metadata = std::move(other377.key_metadata);
-  __isset = other377.__isset;
+FileCryptoMetaData::FileCryptoMetaData(FileCryptoMetaData&& other387) noexcept {
+  encryption_algorithm = std::move(other387.encryption_algorithm);
+  key_metadata = std::move(other387.key_metadata);
+  __isset = other387.__isset;
 }
-FileCryptoMetaData& FileCryptoMetaData::operator=(const FileCryptoMetaData& other378) {
-  encryption_algorithm = other378.encryption_algorithm;
-  key_metadata = other378.key_metadata;
-  __isset = other378.__isset;
+FileCryptoMetaData& FileCryptoMetaData::operator=(const FileCryptoMetaData& other388) {
+  encryption_algorithm = other388.encryption_algorithm;
+  key_metadata = other388.key_metadata;
+  __isset = other388.__isset;
   return *this;
 }
-FileCryptoMetaData& FileCryptoMetaData::operator=(FileCryptoMetaData&& other379) noexcept {
-  encryption_algorithm = std::move(other379.encryption_algorithm);
-  key_metadata = std::move(other379.key_metadata);
-  __isset = other379.__isset;
+FileCryptoMetaData& FileCryptoMetaData::operator=(FileCryptoMetaData&& other389) noexcept {
+  encryption_algorithm = std::move(other389.encryption_algorithm);
+  key_metadata = std::move(other389.key_metadata);
+  __isset = other389.__isset;
   return *this;
 }
 void FileCryptoMetaData::printTo(std::ostream& out) const {

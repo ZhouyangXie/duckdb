@@ -30,7 +30,7 @@ public:
 
 		auto &result_mask = FlatVector::ValidityMutable(result);
 		for (idx_t row_idx = 0; row_idx < num_values; row_idx++) {
-			result_mask.SetInvalid(row_idx + result_offset);
+			result_mask.SetInvalid(row_idx + result_offset + result_write_offset);
 		}
 	}
 };

@@ -52,6 +52,10 @@
 #include "parquet_column_schema.hpp"
 #include "thrift/protocol/TProtocol.h"
 
+#include "zone_skipping.hpp"
+#include "zone_manager.hpp"
+
+
 namespace duckdb_apache {
 namespace thrift {
 class TBase;
@@ -217,6 +221,13 @@ public:
 
 	//! (optional) pointer to the PhysicalOperator for logging
 	optional_ptr<const PhysicalOperator> op;
+
+	//! (optional) attributes used for dynamic compaction
+	// optional_ptr<CompactionCacheState> compaction_cache_state_p;
+
+	// the zone skipping results of the current row group
+	unique_ptr<ZoneIterator> row_group_zone_iterator;
+
 };
 
 struct ParquetColumnDefinition {
@@ -250,6 +261,7 @@ struct ParquetOptions {
 	idx_t explicit_cardinality = 0;
 	bool can_have_nan = false; // if floats or doubles can contain NaN values
 	ParquetPrefetchStrategyOption prefetch_strategy = ParquetPrefetchStrategyOption::AUTO;
+	bool enable_zoning = false;
 };
 
 struct ParquetOptionsSerialization {
@@ -314,6 +326,7 @@ public:
 public:
 	void InitializeScan(ClientContext &context, ParquetReaderScanState &state, vector<idx_t> groups_to_read) const;
 	AsyncResult Scan(ClientContext &context, ParquetReaderScanState &state, DataChunk &output);
+	AsyncResult ScanByZones(ClientContext &context, ParquetReaderScanState &state, DataChunk &output);
 
 	idx_t NumRows() const;
 	idx_t NumRowGroups() const;

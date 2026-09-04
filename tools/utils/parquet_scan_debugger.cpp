@@ -1,20 +1,20 @@
+#include <iostream>
 #include "duckdb.hpp"
 
 namespace duckdb {
 
-void scan_by_query(const char *file_path) {
+void scan_by_query(const char *file_path, const char * sql) {
 	DBConfig config({{"threads", 1}}, false);
     auto db = DuckDB(file_path, &config);
     auto conn = Connection(db);
-	conn.RelationFromQuery("SELECT * FROM sample")
-        ->Filter("1000 < x AND x < 2048")
-	    ->Project(vector<std::string>({"y"}))
-	    ->WriteCSV("/dev/null");
+	auto result = conn.Query(sql);
+	std::cout << result->ToString() << std::endl;
 }
 
 } // namespace duckdb
 
 int main(int argc, char **argv) {
-	duckdb::scan_by_query(argv[1]);
+	D_ASSERT(argc == 3);
+	duckdb::scan_by_query(argv[1], argv[2]);
 	return 0;
 }

@@ -34,8 +34,9 @@ public:
 public:
 	void InitializeDictionary(idx_t dictionary_size, optional_ptr<const TableFilter> filter,
 	                          optional_ptr<TableFilterState> filter_state, bool has_defines);
+	// void InitializeDictionary(const DictionaryDecoder & other);
 	void InitializePage();
-	idx_t Read(uint8_t *defines, idx_t read_count, Vector &result, idx_t result_offset);
+	idx_t Read(uint8_t *defines, idx_t read_count, Vector &result, idx_t result_offset, idx_t result_write_offset = 0);
 	void Skip(uint8_t *defines, idx_t skip_count);
 	bool CanFilter(const TableFilter &filter, TableFilterState &filter_state);
 	bool DictionarySupportsFilter(const TableFilter &filter, TableFilterState &filter_state);

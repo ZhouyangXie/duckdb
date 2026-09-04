@@ -188,6 +188,7 @@ idx_t ListColumnReader::ReadInternal(ColumnReaderInput &input, optional_ptr<Vect
 }
 
 idx_t ListColumnReader::Read(ColumnReaderInput &input, Vector &result) {
+	D_ASSERT(result_write_offset == 0);
 	ApplyPendingSkips(input.define_out, input.repeat_out);
 	return ReadInternal<TemplatedListReader>(input, result);
 }

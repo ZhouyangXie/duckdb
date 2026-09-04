@@ -73,6 +73,26 @@ void DictionaryDecoder::InitializeDictionary(idx_t new_dictionary_size, optional
 	}
 }
 
+// void DictionaryDecoder::InitializeDictionary(const DictionaryDecoder & other){
+// 	dictionary_size = other.dictionary_size;
+// 	filter_result.reset();
+// 	filter_count = 0;
+// 	can_have_nulls = other.can_have_nulls;
+
+// 	// we use the last entry as a NULL, dictionary vectors don't have a separate validity mask
+// 	const auto duckdb_dictionary_size = dictionary_size + can_have_nulls;
+// 	dictionary = other.dictionary;
+// 	auto &dictionary_data = dictionary->data;
+// 	auto &dict_validity = FlatVector::ValidityMutable(dictionary_data);
+// 	dict_validity.Reset(duckdb_dictionary_size);
+// 	if (can_have_nulls) {
+// 		dict_validity.SetInvalid(dictionary_size);
+// 	}
+
+// 	// TODO make sure referring is OK
+// 	this->dictionary->data.Ref(other.dictionary->data);
+// }
+
 void DictionaryDecoder::InitializePage() {
 	// where is it otherwise??
 	auto &block = reader.block;
@@ -107,7 +127,7 @@ idx_t DictionaryDecoder::GetValidValues(uint8_t *defines, idx_t read_count, idx_
 	return valid_count;
 }
 
-idx_t DictionaryDecoder::Read(uint8_t *defines, idx_t read_count, Vector &result, idx_t result_offset) {
+idx_t DictionaryDecoder::Read(uint8_t *defines, idx_t read_count, Vector &result, idx_t result_offset, idx_t result_write_offset) {
 	if (!dictionary) {
 		throw std::runtime_error("Parquet file is likely corrupted, missing dictionary");
 	}
@@ -133,12 +153,12 @@ idx_t DictionaryDecoder::Read(uint8_t *defines, idx_t read_count, Vector &result
 #ifdef DEBUG
 	dictionary_selection_vector.Verify(read_count, dictionary_size + can_have_nulls);
 #endif
-	if (result_offset == 0) {
+	if ((result_offset + result_write_offset) == 0) {
 		result.Dictionary(dictionary, dictionary_selection_vector, read_count);
 		D_ASSERT(result.GetVectorType() == VectorType::DICTIONARY_VECTOR);
 	} else {
 		D_ASSERT(result.GetVectorType() == VectorType::FLAT_VECTOR);
-		VectorOperations::Copy(dictionary->data, result, dictionary_selection_vector, read_count, 0, result_offset);
+		VectorOperations::Copy(dictionary->data, result, dictionary_selection_vector, read_count, 0, result_offset + result_write_offset);
 	}
 	return valid_count;
 }

@@ -877,6 +877,12 @@ struct PageEncodingStats {
 
 }
 
+struct ZoningStatistics {
+  1: required list<i64> zone_offset;
+  2: optional binary min_values;
+  3: optional binary max_values;
+}
+
 /**
  * Description for column metadata
  */
@@ -945,6 +951,8 @@ struct ColumnMetaData {
 
   /** Optional statistics specific for Geometry and Geography logical types */
   17: optional GeospatialStatistics geospatial_statistics;
+
+  18: optional ZoningStatistics zoning_statistics;
 }
 
 struct EncryptionWithFooterKey {

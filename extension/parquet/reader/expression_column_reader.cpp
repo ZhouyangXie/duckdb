@@ -46,6 +46,7 @@ void ExpressionColumnReader::InitializeRead(idx_t row_group_idx_p, const vector<
 }
 
 idx_t ExpressionColumnReader::Read(ColumnReaderInput &input, Vector &result) {
+	D_ASSERT(result_write_offset == 0);  // we can handle non-zero offset by appending data to `result`
 	intermediate_chunk.Reset();
 	auto &intermediate_vector = intermediate_chunk.data[0];
 

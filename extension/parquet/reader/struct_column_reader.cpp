@@ -62,6 +62,7 @@ void StructColumnReader::InitializeRead(idx_t row_group_idx_p, const vector<Colu
 }
 
 idx_t StructColumnReader::Read(ColumnReaderInput &input, Vector &result) {
+	D_ASSERT(result_write_offset == 0);
 	auto &struct_entries = StructVector::GetEntries(result);
 	D_ASSERT(StructType::GetChildTypes(Type()).size() == struct_entries.size());
 
