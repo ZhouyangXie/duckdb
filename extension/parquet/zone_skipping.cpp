@@ -159,6 +159,7 @@ static unique_ptr<Vector> EvaluateEqualsOnZoneMaps(const Value & constant, const
         ConstantVector::Reference(constant_vector, constant_cast, count_t(state.num_zones));
         VectorOperations::LessThanEquals(*(state.min_values), constant_vector, *result);
         auto result_right = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones);
+        result_right->BufferMutable().SetVectorSize(state.num_zones);
         VectorOperations::GreaterThanEquals(*(state.max_values), constant_vector, *result_right);
         VectorOperations::And(*result_right, *result, *result);
     }
@@ -182,12 +183,12 @@ static unique_ptr<Vector> EvaluateFunctionOnZoneMaps(
         return EvaluateExpressionOnZoneMaps(*func_data.child_filter_expr, state);
     }
 
-    if (!state.HasMinMax() && !state.HasZBF()){
+    auto comparison_type = func_expr.GetExpressionType();
+    if (!state.HasMinMax() && !(comparison_type == ExpressionType::COMPARE_EQUAL && state.HasZBF())){
         return nullptr;
     }
 
 	optional_ptr<const BoundConstantExpression> constant_expr;
-    auto comparison_type = func_expr.GetExpressionType();
 	auto &left = BoundComparisonExpression::Left(func_expr);
 	auto &right = BoundComparisonExpression::Right(func_expr);
 	if (right.GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
@@ -212,7 +213,7 @@ static unique_ptr<Vector> EvaluateFunctionOnZoneMaps(
     ConstantVector::Reference(constant_vector, constant_cast, count_t(state.num_zones));
 
     auto result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones);
-    unique_ptr<Vector> result_right = nullptr;
+    result->BufferMutable().SetVectorSize(state.num_zones);
 
     switch(comparison_type){
         case ExpressionType::COMPARE_GREATERTHAN:
@@ -251,7 +252,6 @@ static unique_ptr<Vector> EvaluateConjunctionZoneMaps(const BoundConjunctionExpr
         }
         return result;
     case ExpressionType::CONJUNCTION_OR:
-        // result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones, VectorDataInitialization::ZERO_INITIALIZE);
         for(size_t i = 0; i < conj.children.size(); i++){
             auto child_result = EvaluateExpressionOnZoneMaps(*(conj.children[i]), state);
             if(child_result){
@@ -278,6 +278,7 @@ static unique_ptr<Vector> EvaluateOperatorOnZoneMaps(const BoundOperatorExpressi
                 return nullptr;
             }
             result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones, VectorDataInitialization::ZERO_INITIALIZE);
+            result->BufferMutable().SetVectorSize(state.num_zones);
             auto result_data = FlatVector::GetDataMutable<bool>(*result);
             const char * probe_key = "NULLENCODING";
             state.zbf->probe(probe_key, 12, result_data);

@@ -885,7 +885,7 @@ void ColumnReader::ApplyPendingSkips(data_ptr_t define_out, data_ptr_t repeat_ou
 
 	while (to_skip > 0) {
 		auto skip_now = ReadPageHeaders(to_skip, nullptr, nullptr, to_skip);
-		if (page_is_filtered_out) {
+		if (page_is_filtered_out || skip_now == page_rows_available) {
 			// the page has been filtered out entirely - skip
 			page_rows_available -= skip_now;
 			to_skip -= skip_now;

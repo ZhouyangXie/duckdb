@@ -1390,7 +1390,6 @@ void ParquetReader::PrepareRowGroupBuffer(ParquetReaderScanState &state, idx_t i
 			// zone-based data skipping
 			// not skipping the whole row group, but initialize the zone manager
 			auto & column_metadata = group.columns[schema_column_index].meta_data;
-			// TODO: add a user-level switch
 			bool zone_skipping_possible = !is_expression && is_column && column_metadata.__isset.zoning_statistics && parquet_options.enable_zoning;
 			if (zone_skipping_possible){
 				auto zone_state = ZoneStatisticsToState(
@@ -1794,6 +1793,7 @@ AsyncResult ParquetReader::ScanByZones(ClientContext &context, ParquetReaderScan
 			scanned_count += zone.Size();
 			cur_offset = zone.end;
 		}
+		FlatVector::SetSize(result_vector, count_t(scan_count));
 	}
 	if (scan_count != filter_count) {
 		result.Slice(state.sel, filter_count);

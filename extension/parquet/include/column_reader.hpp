@@ -266,7 +266,7 @@ private:
 			return;
 		}
 		auto &result_mask = FlatVector::ValidityMutable(result);
-		for (idx_t row_idx = result_offset + result_write_offset; row_idx < result_offset + num_values; row_idx++) {
+		for (idx_t row_idx = result_offset + result_write_offset; row_idx < result_offset + result_write_offset + num_values; row_idx++) {
 			if (HAS_DEFINES && defines[row_idx] != MaxDefine()) {
 				result_mask.SetInvalid(row_idx);
 				continue;
