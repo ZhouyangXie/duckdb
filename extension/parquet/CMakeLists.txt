@@ -32,7 +32,8 @@ set(PARQUET_EXTENSION_FILES
     zstd_file_system.cpp
     zone_manager.cpp
     zone_skipping.cpp
-    zoned_selection_vector.cpp)
+    zoned_selection_vector.cpp
+    MurMurHash3.cpp)
 
 if(NOT CLANG_TIDY)
   # parquet/thrift/snappy

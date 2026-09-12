@@ -460,6 +460,8 @@ class SortingColumn;
 
 class PageEncodingStats;
 
+class ZoningBloomFilter;
+
 class ZoningStatistics;
 
 class ColumnMetaData;
@@ -2320,10 +2322,42 @@ void swap(PageEncodingStats &a, PageEncodingStats &b);
 
 std::ostream& operator<<(std::ostream& out, const PageEncodingStats& obj);
 
+
+class ZoningBloomFilter : public virtual ::apache::thrift::TBase {
+ public:
+
+  ZoningBloomFilter(const ZoningBloomFilter&);
+  ZoningBloomFilter(ZoningBloomFilter&&) noexcept;
+  ZoningBloomFilter& operator=(const ZoningBloomFilter&);
+  ZoningBloomFilter& operator=(ZoningBloomFilter&&) noexcept;
+  ZoningBloomFilter() noexcept;
+
+  virtual ~ZoningBloomFilter() noexcept;
+  int32_t k;
+  int32_t m;
+  std::string mask;
+
+  void __set_k(const int32_t val);
+
+  void __set_m(const int32_t val);
+
+  void __set_mask(const std::string& val);
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot) override;
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const override;
+
+  virtual void printTo(std::ostream& out) const;
+};
+
+void swap(ZoningBloomFilter &a, ZoningBloomFilter &b);
+
+std::ostream& operator<<(std::ostream& out, const ZoningBloomFilter& obj);
+
 typedef struct _ZoningStatistics__isset {
-  _ZoningStatistics__isset() : min_values(false), max_values(false) {}
+  _ZoningStatistics__isset() : min_values(false), max_values(false), zbf(false) {}
   bool min_values :1;
   bool max_values :1;
+  bool zbf :1;
 } _ZoningStatistics__isset;
 
 class ZoningStatistics : public virtual ::apache::thrift::TBase {
@@ -2339,6 +2373,7 @@ class ZoningStatistics : public virtual ::apache::thrift::TBase {
   duckdb::vector<int64_t>  zone_offset;
   std::string min_values;
   std::string max_values;
+  ZoningBloomFilter zbf;
 
   _ZoningStatistics__isset __isset;
 
@@ -2347,6 +2382,8 @@ class ZoningStatistics : public virtual ::apache::thrift::TBase {
   void __set_min_values(const std::string& val);
 
   void __set_max_values(const std::string& val);
+
+  void __set_zbf(const ZoningBloomFilter& val);
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot) override;
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const override;

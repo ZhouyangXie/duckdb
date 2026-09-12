@@ -877,10 +877,17 @@ struct PageEncodingStats {
 
 }
 
+struct ZoningBloomFilter {
+  1: required i32 k; // number of hash keys
+  2: required i32 m; // number of zones
+  3: required binary mask; // the bit mask, bit-length is a multipier of m
+}
+
 struct ZoningStatistics {
   1: required list<i64> zone_offset;
   2: optional binary min_values;
   3: optional binary max_values;
+  4: optional ZoningBloomFilter zbf;
 }
 
 /**

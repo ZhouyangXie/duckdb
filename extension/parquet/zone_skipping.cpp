@@ -1,6 +1,8 @@
 #include "zone_skipping.hpp"
+#include "duckdb/common/helper.hpp"
 #include "duckdb/common/types/timebase.hpp"
 #include "duckdb/planner/filter/table_filter_functions.hpp"
+#include "duckdb/planner/expression/bound_operator_expression.hpp"
 #include "duckdb/common/types/vector.hpp"
 
 
@@ -29,6 +31,11 @@ static LogicalTypeId GetMinMaxStatsInterpretionType(LogicalTypeId type_id){
 	case LogicalTypeId::TIME_TZ:
 	case LogicalTypeId::TIME_NS:
         return LogicalTypeId::BIGINT;
+    // the first 8-byte of CHAR/VARCHAR are extracted to be a BIGINT
+    // tail-filled with 0 if not long enough
+    case LogicalTypeId::CHAR:
+    case LogicalTypeId::VARCHAR:
+        return LogicalTypeId::UBIGINT;
     case LogicalTypeId::DECIMAL:
     case LogicalTypeId::FLOAT:
     case LogicalTypeId::DOUBLE:
@@ -40,7 +47,7 @@ static LogicalTypeId GetMinMaxStatsInterpretionType(LogicalTypeId type_id){
 
 static Value ConvertConstantForComparison(Value value){
     auto type_id = value.type().id();
-    uint64_t raw_value = 0;
+    int64_t raw_value = 0;
     switch (type_id)
     {
     case LogicalTypeId::UTINYINT:
@@ -86,6 +93,11 @@ static Value ConvertConstantForComparison(Value value){
     case LogicalTypeId::FLOAT:
     case LogicalTypeId::DOUBLE:
         return value.DefaultCastAs(LogicalType::DOUBLE);
+    case LogicalTypeId::CHAR:
+    case LogicalTypeId::VARCHAR:
+        return Value::UBIGINT(
+            BSwapIfLE(Load<uint64_t>(const_data_ptr_cast(value.GetValueUnsafe<string_t>().GetPrefix())))
+        );
     default:
         throw InternalException("Invalid data type to interpret ZoneStatistics.");
     }
@@ -100,14 +112,57 @@ unique_ptr<ZoneSkipState> ZoneStatisticsToState(
     auto zone_map = make_uniq<ZoneSkipState>(zone_stats.zone_offset.size());
 
     if (zone_stats.__isset.min_values && zone_stats.__isset.max_values){
-        auto physical_type = type.InternalType();
-        D_ASSERT(TypeIsConstantSize(physical_type));
         auto interpret_type_id = GetMinMaxStatsInterpretionType(type.id());
         auto interpret_type = LogicalType(interpret_type_id);
         zone_map->min_values = make_uniq<Vector>(interpret_type, (data_ptr_t)zone_stats.min_values.data(), zone_map->num_zones);
         zone_map->max_values = make_uniq<Vector>(interpret_type, (data_ptr_t)zone_stats.max_values.data(), zone_map->num_zones);
     }
+    if (zone_stats.__isset.zbf){
+        zone_map->InitializeZBF(
+            (const uint8_t *)zone_stats.zbf.mask.data(), zone_stats.zbf.mask.size(), zone_stats.zbf.k);
+    }
     return zone_map;
+}
+
+static unique_ptr<Vector> EvaluateEqualsOnZoneMaps(const Value & constant, const ZoneSkipState & state){
+
+    unique_ptr<Vector> result = nullptr;
+
+    if(state.HasZBF()){
+        result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones, VectorDataInitialization::ZERO_INITIALIZE);
+        result->BufferMutable().SetVectorSize(state.num_zones);
+        if(constant.type().id() == LogicalTypeId::CHAR || constant.type().id() == LogicalTypeId::VARCHAR){
+            const auto & str = constant.GetValueUnsafe<string_t>();
+            const uint8_t * probe_key = (const uint8_t *)str.GetData();
+            unsigned probe_key_size = str.GetSize();
+            auto result_data = FlatVector::GetDataMutable<bool>(*result);
+            state.zbf->probe(probe_key, probe_key_size, result_data);
+        }
+        else {
+            auto result_data = FlatVector::GetDataMutable<bool>(*result);
+            const auto & constant_cast = ConvertConstantForComparison(constant);
+            if(constant_cast.type().id() == LogicalTypeId::BIGINT){
+                auto probe_key = constant_cast.GetValue<int64_t>();
+                state.zbf->probe(&probe_key, sizeof(probe_key), result_data);
+            } else {
+                // D_ASSERT(constant_cast.type().id() == LogicalTypeId::DOUBLE);
+                auto probe_key = constant_cast.GetValue<double_t>();
+                state.zbf->probe(&probe_key, sizeof(probe_key), result_data);
+            }
+        }
+    }
+    else if (state.HasMinMax()){
+        result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones, VectorDataInitialization::ZERO_INITIALIZE);
+        result->BufferMutable().SetVectorSize(state.num_zones);
+        Value constant_cast = ConvertConstantForComparison(constant);
+        Vector constant_vector(constant_cast.type(), 0);
+        ConstantVector::Reference(constant_vector, constant_cast, count_t(state.num_zones));
+        VectorOperations::LessThanEquals(*(state.min_values), constant_vector, *result);
+        auto result_right = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones);
+        VectorOperations::GreaterThanEquals(*(state.max_values), constant_vector, *result_right);
+        VectorOperations::And(*result_right, *result, *result);
+    }
+    return result;
 }
 
 // We extend ExpressionFilter's evaluation on Statistics to ZoneMaps
@@ -127,7 +182,7 @@ static unique_ptr<Vector> EvaluateFunctionOnZoneMaps(
         return EvaluateExpressionOnZoneMaps(*func_data.child_filter_expr, state);
     }
 
-    if (!state.HasMinMax()){
+    if (!state.HasMinMax() && !state.HasZBF()){
         return nullptr;
     }
 
@@ -143,11 +198,15 @@ static unique_ptr<Vector> EvaluateFunctionOnZoneMaps(
 	} else {
 		return nullptr;
 	}
-	auto &constant = constant_expr->value;
+    auto &constant = constant_expr->value;
+
+    if (comparison_type == ExpressionType::COMPARE_EQUAL){
+        return EvaluateEqualsOnZoneMaps(constant ,state);
+    }
+
 	if (constant.IsNull()) {
         return nullptr;
 	}
-    // Value constant_cast = constant.DefaultCastAs(state.max_values->GetType());
     Value constant_cast = ConvertConstantForComparison(constant);
     Vector constant_vector(constant_cast.type(), 0);
     ConstantVector::Reference(constant_vector, constant_cast, count_t(state.num_zones));
@@ -169,14 +228,7 @@ static unique_ptr<Vector> EvaluateFunctionOnZoneMaps(
             VectorOperations::LessThanEquals(*(state.min_values), constant_vector, *result);
             return result;
         case ExpressionType::COMPARE_EQUAL:
-            // TODO: use ZBF here is available
-            VectorOperations::LessThanEquals(*(state.min_values), constant_vector, *result);
-            result_right = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones);
-            VectorOperations::GreaterThanEquals(*(state.max_values), constant_vector, *result_right);
-            VectorOperations::And(*result_right, *result, *result);
-            return result;
-        case ExpressionType::COMPARE_NOTEQUAL:
-            // TODO: use ZBF here is available
+            throw InternalException("Should have been handled elsewhere.");
         default:
             return nullptr;
     }
@@ -218,6 +270,47 @@ static unique_ptr<Vector> EvaluateConjunctionZoneMaps(const BoundConjunctionExpr
     }
 }
 
+static unique_ptr<Vector> EvaluateOperatorOnZoneMaps(const BoundOperatorExpression & op_expr, const ZoneSkipState & state){
+    unique_ptr<Vector> result = nullptr;
+    switch (op_expr.GetExpressionType()) {
+        case ExpressionType::OPERATOR_IS_NULL: {
+            if (!state.HasZBF()){
+                return nullptr;
+            }
+            result = make_uniq<Vector>(LogicalType::BOOLEAN, state.num_zones, VectorDataInitialization::ZERO_INITIALIZE);
+            auto result_data = FlatVector::GetDataMutable<bool>(*result);
+            const char * probe_key = "NULLENCODING";
+            state.zbf->probe(probe_key, 12, result_data);
+            return result;
+        }
+        case ExpressionType::COMPARE_IN: {
+            for(size_t i = 1; i < op_expr.children.size(); i++){
+                if(op_expr.children[i]->GetExpressionType() != ExpressionType::VALUE_CONSTANT){
+                    return nullptr;
+                }
+        		auto &value = op_expr.children[i]->Cast<BoundConstantExpression>().value;
+                auto child_result = EvaluateEqualsOnZoneMaps(value, state);
+                if(child_result){
+                    if (result){
+                        VectorOperations::Or(*child_result, *result, *result);
+                    } else {
+                        result = std::move(child_result);
+                    }
+                } else {
+                    return nullptr;
+                }
+            }
+            return result;
+        }
+            // throw InternalException("IN filter should have been converted to Or conjunction.");
+        case ExpressionType::OPERATOR_IS_NOT_NULL:
+        default:
+            return nullptr;
+	}
+    return nullptr;
+}
+
+
 unique_ptr<Vector> EvaluateExpressionOnZoneMaps(const Expression & expr, const ZoneSkipState & state){
     switch(expr.GetExpressionClass()){
     case ExpressionClass::BOUND_FUNCTION:
@@ -225,7 +318,7 @@ unique_ptr<Vector> EvaluateExpressionOnZoneMaps(const Expression & expr, const Z
     case ExpressionClass::BOUND_CONJUNCTION:
         return EvaluateConjunctionZoneMaps(expr.Cast<BoundConjunctionExpression>(), state);
     case ExpressionClass::BOUND_OPERATOR:
-        // TODO: process IN operator by ZBF
+        return EvaluateOperatorOnZoneMaps(expr.Cast<BoundOperatorExpression>(), state);
     default:
         return nullptr;
     }
