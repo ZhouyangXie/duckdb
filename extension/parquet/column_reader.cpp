@@ -885,22 +885,13 @@ void ColumnReader::ApplyPendingSkips(data_ptr_t define_out, data_ptr_t repeat_ou
 
 	while (to_skip > 0) {
 		auto skip_now = ReadPageHeaders(to_skip, nullptr, nullptr, to_skip);
-		if (to_skip > STANDARD_VECTOR_SIZE){
-			if (page_is_filtered_out || to_skip >= page_rows_available) {
-				// the page has been filtered out entirely - skip
-				to_skip -= page_rows_available;
-				page_rows_available = 0;
-				continue;
-			}
-			skip_now = to_skip;
-		} else {
-			if (page_is_filtered_out) {
-				// the page has been filtered out entirely - skip
-				page_rows_available -= skip_now;
-				to_skip -= skip_now;
-				continue;
-			}
+		if (page_is_filtered_out || to_skip >= page_rows_available){
+			// the page has been filtered out entirely - skip
+			to_skip -= page_rows_available;
+			page_rows_available = 0;
+			continue;
 		}
+
 		const auto all_valid = PrepareRead(skip_now, skip_define_out, skip_repeat_out, 0);
 
 		const auto define_ptr = all_valid ? nullptr : static_cast<uint8_t *>(skip_define_out);
