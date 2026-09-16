@@ -361,6 +361,11 @@ private:
 	void PreparePageV2(PageHeader &page_hdr);
 	void DecompressInternal(CompressionCodec::type codec, const_data_ptr_t src, idx_t src_size, data_ptr_t dst,
 	                        idx_t dst_size);
+	void TryLoadOffsetIndex();
+
+	unique_ptr<duckdb_parquet::OffsetIndex> offset_index = nullptr;
+	idx_t offset_index_page_idx = 0;
+
 	const ColumnChunk *chunk = nullptr;
 
 	TProtocol *protocol;

@@ -248,6 +248,8 @@ void ColumnReader::InitializeRead(idx_t row_group_idx_p, const vector<ColumnChun
 		chunk_read_offset = NumericCast<idx_t>(chunk->meta_data.dictionary_page_offset);
 	}
 	group_rows_available = chunk->meta_data.num_values;
+
+	TryLoadOffsetIndex();
 }
 
 bool ColumnReader::PageIsFilteredOut(PageHeader &page_hdr, optional_ptr<const TableFilter> filter) {
@@ -297,6 +299,25 @@ bool ColumnReader::PageIsFilteredOut(PageHeader &page_hdr, optional_ptr<const Ta
 	return page_is_filtered_out;
 }
 
+void ColumnReader::TryLoadOffsetIndex() {
+	offset_index.reset();
+	offset_index_page_idx = 0;
+	if (reader.parquet_options.encryption_config) {
+		return;
+	}
+	if (!chunk->__isset.offset_index_offset || !chunk->__isset.offset_index_length || chunk->offset_index_length <= 0) {
+		return;
+	}
+	auto &trans = reinterpret_cast<ThriftFileTransport &>(*protocol->getTransport());
+	auto saved_location = trans.GetLocation();
+	auto offset_index = make_uniq<duckdb_parquet::OffsetIndex>();
+	auto offset_index_pos = NumericCast<idx_t>(chunk->offset_index_offset);
+	trans.SetLocation(offset_index_pos);
+	trans.Prefetch(offset_index_pos, NumericCast<idx_t>(chunk->offset_index_length));
+	offset_index->read(protocol);
+	trans.SetLocation(saved_location);
+}
+
 void ColumnReader::ReadEncrypted(duckdb_apache::thrift::TBase &object) {
 	aad_crypto_metadata.module = ParquetCrypto::GetModuleHeader(*chunk, aad_crypto_metadata.page_ordinal);
 	aad_crypto_metadata.page_ordinal =
@@ -336,6 +357,28 @@ void ColumnReader::PrepareRead(optional_ptr<const TableFilter> filter, optional_
 	PageHeader page_hdr;
 	auto &trans = reinterpret_cast<ThriftFileTransport &>(*protocol->getTransport());
 
+	if (rows_to_skip > 0 && offset_index) {
+		const auto & locations = offset_index->page_locations;
+		// in case the current page is a BF or Dict
+		auto next_page_loc = locations[offset_index_page_idx].offset;
+		if(next_page_loc == trans.GetLocation()){
+			idx_t next_first_row;
+			if (offset_index_page_idx + 1 < locations.size()){
+				next_first_row = NumericCast<idx_t>(locations[offset_index_page_idx + 1].first_row_index);
+			} else {
+				next_first_row = chunk->meta_data.num_values;
+			}
+			auto page_num_values = next_first_row - locations[offset_index_page_idx].first_row_index;
+			if (rows_to_skip >= page_num_values) {
+				trans.Skip(NumericCast<idx_t>(offset_index->page_locations[offset_index_page_idx].compressed_page_size));
+				offset_index_page_idx++;
+				page_is_filtered_out = true;
+				page_rows_available = page_num_values;
+				return;
+			}
+		}
+	}
+
 	if (trans.HasPrefetch()) {
 		// Already has some data prefetched, let's not mess with it
 		Read(page_hdr);
@@ -351,6 +394,10 @@ void ColumnReader::PrepareRead(optional_ptr<const TableFilter> filter, optional_
 	// some basic sanity check
 	if (page_hdr.compressed_page_size < 0 || page_hdr.uncompressed_page_size < 0) {
 		throw InvalidInputException("Failed to read file \"%s\": Page sizes can't be < 0", Reader().GetFileName());
+	}
+
+	if (offset_index && (page_hdr.type == PageType::DATA_PAGE || page_hdr.type == PageType::DATA_PAGE_V2)) {
+		offset_index_page_idx++;
 	}
 
 	if (PageIsFilteredOut(page_hdr, filter)) {
