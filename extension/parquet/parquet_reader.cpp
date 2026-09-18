@@ -1416,11 +1416,7 @@ void ParquetReader::PrepareRowGroupBuffer(ParquetReaderScanState &state, idx_t i
 			}
 		}
 	}
-
-	for (auto &column_reader : state.column_readers) {
-		column_reader->InitializeRead(state.group_idx_list[state.current_group], group.columns,
-		                              *state.thrift_file_proto);
-	}
+	column_reader.InitializeRead(state.group_idx_list[state.current_group], group.columns, *state.thrift_file_proto);
 }
 
 idx_t ParquetReader::NumRows() const {

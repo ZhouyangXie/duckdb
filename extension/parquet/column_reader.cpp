@@ -310,7 +310,7 @@ void ColumnReader::TryLoadOffsetIndex() {
 	}
 	auto &trans = reinterpret_cast<ThriftFileTransport &>(*protocol->getTransport());
 	auto saved_location = trans.GetLocation();
-	auto offset_index = make_uniq<duckdb_parquet::OffsetIndex>();
+	offset_index = make_uniq<duckdb_parquet::OffsetIndex>();
 	auto offset_index_pos = NumericCast<idx_t>(chunk->offset_index_offset);
 	trans.SetLocation(offset_index_pos);
 	trans.Prefetch(offset_index_pos, NumericCast<idx_t>(chunk->offset_index_length));
